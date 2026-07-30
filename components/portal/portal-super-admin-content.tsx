@@ -4,52 +4,78 @@ import * as React from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import {
   Users, CalendarCheck, DollarSign, TrendingUp, Plus, Pencil, Trash2,
-  Calendar, Tent, FileText, Settings, Download, ArrowRight, X, Check,
-  AlertTriangle, Image as ImageIcon, Mail, MapPin, Phone, Megaphone,
+  Calendar, Tent, FileText, Settings, Download, ArrowRight, Check,
+  Mail, MapPin, Megaphone, ChevronLeft, ChevronRight,
+  UserPlus, Loader2, ShieldCheck,
 } from 'lucide-react';
 import { StatCard } from '@/components/shared/stat-card';
+import { EmailQuotaWidget } from '@/components/portal/email-quota-widget';
 import { AdminDataTable, type Column } from '@/components/shared/admin-data-table';
-import { mockRegistrations, allCamps, seasons, newsItems, type Registration } from '@/lib/camp-data';
-import { useRole } from '@/components/role-context';
-import { cn } from '@/lib/utils';
+import { formatDateRange, type Season, type Camp } from '@/lib/camp-data';
+import { getSeasonIcon } from '@/lib/icon-map';
+import type { RegistrationRow, RegistrationStatus } from '@/lib/queries/registrations';
+import type { StaffUser } from '@/lib/queries/users';
+import type { NewsPostRow } from '@/lib/queries/news';
+import type { GalleryImageRow } from '@/lib/queries/gallery';
+import type { CampTypeRow } from '@/lib/queries/camp-types';
+import { validateSeasonInput } from '@/lib/validation/season';
+import { validateCampInput } from '@/lib/validation/camp';
+import { cn, slugify } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
-import {
-  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
-  AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
-} from '@/components/ui/alert-dialog';
+import { ContentTab } from '@/components/portal/content-management';
+import { ConfirmDialog, type ConfirmState } from '@/components/portal/confirm-dialog';
+import { EmailStatusCell } from '@/components/portal/email-status-cell';
+import { RegistrationActionsCell } from '@/components/portal/registration-actions-cell';
 
 const statusBadge: Record<string, string> = {
   confirmed: 'bg-emerald-500/15 text-emerald-400 border-emerald-500/20',
-  pending: 'bg-amber-500/15 text-amber-400 border-amber-500/20',
-  waitlist: 'bg-rose-500/15 text-rose-400 border-rose-500/20',
+  payment_submitted: 'bg-amber-500/15 text-amber-400 border-amber-500/20',
+  pending_payment: 'bg-sky-500/15 text-sky-400 border-sky-500/20',
+  waitlisted: 'bg-rose-500/15 text-rose-400 border-rose-500/20',
+  refunded: 'bg-zinc-500/15 text-zinc-400 border-zinc-500/20',
 };
 
-type Tab = 'overview' | 'seasons' | 'camps' | 'registrations' | 'content' | 'settings';
+type CampBreakdown = { campId: string; name: string; slug: string; capacity: number; total: number; confirmed: number; revenue: number };
 
-export function PortalSuperAdminContent() {
+type Tab = 'overview' | 'seasons' | 'camps' | 'registrations' | 'staff' | 'content' | 'settings';
+
+type Props = {
+  registrations: RegistrationRow[];
+  totalCount: number;
+  page: number;
+  pageSize: number;
+  stats: { totalCount: number; confirmedCount: number; totalRevenue: number };
+  campBreakdown: CampBreakdown[];
+  seasons: Season[];
+  camps: Camp[];
+  campTypes: CampTypeRow[];
+  campFilter: string;
+  statusFilter: string;
+  staffUsers: StaffUser[];
+  newsPosts: NewsPostRow[];
+  newsTotalCount: number;
+  newsPage: number;
+  galleryImages: GalleryImageRow[];
+  galleryTotalCount: number;
+  galleryPage: number;
+  emailUsage: { sentToday: number; estimatedQuota: number };
+};
+
+export function PortalSuperAdminContent(props: Props) {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const { authed, role } = useRole();
   const [tab, setTab] = React.useState<Tab>((searchParams.get('tab') as Tab) || 'overview');
-  const [confirmState, setConfirmState] = React.useState<{ title: string; description: string; onConfirm: () => void } | null>(null);
-
-  React.useEffect(() => {
-    if (!authed || role !== 'super-admin') {
-      router.replace('/portal/login');
-    }
-  }, [authed, role, router]);
+  const [confirmState, setConfirmState] = React.useState<ConfirmState>(null);
 
   function switchTab(t: Tab) {
     setTab(t);
     router.push(`/portal/super-admin?tab=${t}`);
   }
 
-  if (!authed || role !== 'super-admin') {
-    return <div className="flex min-h-screen items-center justify-center text-muted-foreground">Redirecting...</div>;
-  }
+  const totalCapacity = props.camps.reduce((s, c) => s + c.capacity, 0);
 
   return (
     <div>
@@ -57,7 +83,7 @@ export function PortalSuperAdminContent() {
       <div className="mb-8 flex flex-col items-start justify-between gap-4 sm:flex-row sm:items-center">
         <div>
           <div className="flex items-center gap-3">
-            <h1 className="font-display text-3xl font-extrabold text-white">Super Admin Dashboard</h1>
+            <h1 className="font-display text-3xl font-extrabold text-foreground">Super Admin Dashboard</h1>
             <span className="inline-flex items-center gap-1.5 rounded-full border border-emerald-500/20 bg-emerald-500/15 px-3 py-1 text-xs font-semibold text-emerald-400">
               <Check className="h-3 w-3" /> Full Access
             </span>
@@ -73,6 +99,7 @@ export function PortalSuperAdminContent() {
           ['seasons', 'Seasons', Calendar],
           ['camps', 'Camps', Tent],
           ['registrations', 'Registrations', Users],
+          ['staff', 'Staff', UserPlus],
           ['content', 'Content', FileText],
           ['settings', 'Settings', Settings],
         ] as const).map(([t, label, Icon]) => (
@@ -81,7 +108,7 @@ export function PortalSuperAdminContent() {
             onClick={() => switchTab(t)}
             className={cn(
               'flex items-center gap-2 rounded-full px-4 py-2 text-sm font-semibold transition-all',
-              tab === t ? 'bg-gradient-to-r from-brand-orange to-brand-ember text-white shadow-[0_0_20px_-4px_hsl(22_95%_56%/0.6)]' : 'text-muted-foreground hover:text-white'
+              tab === t ? 'bg-gradient-to-r from-brand-orange to-brand-ember text-white shadow-[0_0_20px_-4px_hsl(22_95%_56%/0.6)]' : 'text-muted-foreground hover:text-foreground'
             )}
           >
             <Icon className="h-4 w-4" /> {label}
@@ -90,58 +117,69 @@ export function PortalSuperAdminContent() {
       </div>
 
       {/* Tab content */}
-      {tab === 'overview' && <OverviewTab onNavigate={switchTab} />}
-      {tab === 'seasons' && <SeasonsTab onConfirm={setConfirmState} />}
-      {tab === 'camps' && <CampsTab onConfirm={setConfirmState} />}
-      {tab === 'registrations' && <RegistrationsTab onConfirm={setConfirmState} />}
-      {tab === 'content' && <ContentTab onConfirm={setConfirmState} />}
+      {tab === 'overview' && <OverviewTab onNavigate={switchTab} stats={props.stats} totalCapacity={totalCapacity} campCount={props.camps.length} seasonCount={props.seasons.length} emailUsage={props.emailUsage} />}
+      {tab === 'seasons' && <SeasonsTab seasons={props.seasons} onConfirm={setConfirmState} />}
+      {tab === 'camps' && <CampsTab camps={props.camps} seasons={props.seasons} campTypes={props.campTypes} campBreakdown={props.campBreakdown} onConfirm={setConfirmState} />}
+      {tab === 'registrations' && (
+        <RegistrationsTab
+          registrations={props.registrations}
+          totalCount={props.totalCount}
+          page={props.page}
+          pageSize={props.pageSize}
+          camps={props.camps}
+          campFilter={props.campFilter}
+          statusFilter={props.statusFilter}
+          onConfirm={setConfirmState}
+        />
+      )}
+      {tab === 'staff' && <StaffTab staffUsers={props.staffUsers} onConfirm={setConfirmState} />}
+      {tab === 'content' && (
+        <ContentTab
+          seasons={props.seasons}
+          camps={props.camps}
+          newsPosts={props.newsPosts}
+          newsTotalCount={props.newsTotalCount}
+          newsPage={props.newsPage}
+          galleryImages={props.galleryImages}
+          galleryTotalCount={props.galleryTotalCount}
+          galleryPage={props.galleryPage}
+          basePath="/portal/super-admin"
+          onConfirm={setConfirmState}
+        />
+      )}
       {tab === 'settings' && <SettingsTab />}
 
-      {/* Confirmation dialog */}
-      {confirmState && (
-        <AlertDialog open onOpenChange={() => setConfirmState(null)}>
-          <AlertDialogContent>
-            <AlertDialogHeader>
-              <AlertDialogTitle className="flex items-center gap-2 text-white">
-                <AlertTriangle className="h-5 w-5 text-amber-400" />
-                {confirmState.title}
-              </AlertDialogTitle>
-              <AlertDialogDescription>{confirmState.description}</AlertDialogDescription>
-            </AlertDialogHeader>
-            <AlertDialogFooter>
-              <AlertDialogCancel className="rounded-full">Cancel</AlertDialogCancel>
-              <AlertDialogAction
-                className="rounded-full bg-rose-500 text-white hover:bg-rose-600"
-                onClick={() => { confirmState.onConfirm(); setConfirmState(null); }}
-              >
-                Confirm
-              </AlertDialogAction>
-            </AlertDialogFooter>
-          </AlertDialogContent>
-        </AlertDialog>
-      )}
+      <ConfirmDialog state={confirmState} onClose={() => setConfirmState(null)} />
     </div>
   );
 }
 
 /* ========== OVERVIEW ========== */
-function OverviewTab({ onNavigate }: { onNavigate: (t: Tab) => void }) {
-  const totalReg = mockRegistrations.length;
-  const confirmedReg = mockRegistrations.filter((r) => r.status === 'confirmed').length;
-  const totalRevenue = mockRegistrations.filter((r) => r.status === 'confirmed').reduce((sum, r) => sum + r.price, 0);
-  const totalCapacity = allCamps.reduce((s, c) => s + c.capacity, 0);
-
+function OverviewTab({
+  onNavigate, stats, totalCapacity, campCount, seasonCount, emailUsage,
+}: {
+  onNavigate: (t: Tab) => void;
+  stats: { totalCount: number; confirmedCount: number; totalRevenue: number };
+  totalCapacity: number;
+  campCount: number;
+  seasonCount: number;
+  emailUsage: { sentToday: number; estimatedQuota: number };
+}) {
   return (
     <div>
       <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
-        <StatCard icon={Users} label="Total registrations" value={totalReg} sublabel={`${confirmedReg} confirmed`} accent="orange" />
-        <StatCard icon={CalendarCheck} label="Spots filled" value={confirmedReg} sublabel={`of ${totalCapacity} capacity`} accent="teal" />
-        <StatCard icon={DollarSign} label="Total revenue" value={`EGP ${totalRevenue.toLocaleString()}`} sublabel="from confirmed" accent="gold" />
-        <StatCard icon={TrendingUp} label="Active camps" value={allCamps.length} sublabel={`${seasons.length} seasons`} accent="orange" />
+        <StatCard icon={Users} label="Total registrations" value={stats.totalCount} sublabel={`${stats.confirmedCount} confirmed`} accent="orange" />
+        <StatCard icon={CalendarCheck} label="Spots filled" value={stats.confirmedCount} sublabel={`of ${totalCapacity} capacity`} accent="teal" />
+        <StatCard icon={DollarSign} label="Total revenue" value={`EGP ${stats.totalRevenue.toLocaleString()}`} sublabel="from confirmed" accent="gold" />
+        <StatCard icon={TrendingUp} label="Active camps" value={campCount} sublabel={`${seasonCount} seasons`} accent="orange" />
+      </div>
+
+      <div className="mt-6">
+        <EmailQuotaWidget sentToday={emailUsage.sentToday} estimatedQuota={emailUsage.estimatedQuota} />
       </div>
 
       <div className="mt-8">
-        <h2 className="mb-4 font-display text-xl font-bold text-white">Quick actions</h2>
+        <h2 className="mb-4 font-display text-xl font-bold text-foreground">Quick actions</h2>
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {[
             { label: 'Add new season', icon: Calendar, tab: 'seasons' as Tab },
@@ -160,7 +198,7 @@ function OverviewTab({ onNavigate }: { onNavigate: (t: Tab) => void }) {
                 <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary/12 text-primary">
                   <a.icon className="h-5 w-5" />
                 </div>
-                <span className="font-semibold text-white">{a.label}</span>
+                <span className="font-semibold text-foreground">{a.label}</span>
               </div>
               <ArrowRight className="h-4 w-4 text-muted-foreground transition-transform group-hover:translate-x-0.5 group-hover:text-primary" />
             </button>
@@ -172,128 +210,384 @@ function OverviewTab({ onNavigate }: { onNavigate: (t: Tab) => void }) {
 }
 
 /* ========== SEASONS ========== */
-function SeasonsTab({ onConfirm }: { onConfirm: (s: { title: string; description: string; onConfirm: () => void }) => void }) {
+function SeasonsTab({ seasons, onConfirm }: { seasons: Season[]; onConfirm: (s: { title: string; description: string; onConfirm: () => void }) => void }) {
+  const router = useRouter();
   const [showAdd, setShowAdd] = React.useState(false);
+  const [year, setYear] = React.useState(String(new Date().getFullYear() + 1));
+  const [type, setType] = React.useState<'summer' | 'winter'>('summer');
+  const [formError, setFormError] = React.useState<string | null>(null);
+  const [submitting, setSubmitting] = React.useState(false);
+  const [togglingId, setTogglingId] = React.useState<string | null>(null);
+
+  const sorted = [...seasons].sort((a, b) => b.year - a.year || a.type.localeCompare(b.type));
+
+  async function handleCreate(e: React.FormEvent) {
+    e.preventDefault();
+    setFormError(null);
+
+    const errors = validateSeasonInput({ year, type });
+    if (errors.length > 0) {
+      setFormError(errors.join(' '));
+      return;
+    }
+
+    setSubmitting(true);
+    try {
+      const res = await fetch('/api/portal/seasons', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ year: Number(year), type }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Failed to create season');
+      setShowAdd(false);
+      router.refresh();
+    } catch (err) {
+      setFormError(err instanceof Error ? err.message : 'Failed to create season');
+    } finally {
+      setSubmitting(false);
+    }
+  }
+
+  async function toggleStatus(s: Season) {
+    setTogglingId(s.id);
+    try {
+      const nextStatus = s.dbStatus === 'open' ? 'closed' : 'open';
+      const res = await fetch(`/api/portal/seasons/${s.id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ status: nextStatus }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Failed to update season');
+      router.refresh();
+    } catch (err) {
+      onConfirm({
+        title: 'Failed to update season',
+        description: err instanceof Error ? err.message : 'Unknown error',
+        onConfirm: () => {},
+      });
+    } finally {
+      setTogglingId(null);
+    }
+  }
 
   return (
     <div>
-      <div className="mb-4 flex justify-end">
-        <Button size="sm" className="rounded-full glow-orange" onClick={() => setShowAdd(true)}>
+      <div className="mb-4 flex items-center justify-between">
+        <p className="text-sm text-muted-foreground">{sorted.length} season{sorted.length === 1 ? '' : 's'}, newest first.</p>
+        <Button size="sm" className="rounded-full glow-orange" onClick={() => setShowAdd((v) => !v)}>
           <Plus className="mr-1.5 h-4 w-4" /> Add New Season
         </Button>
       </div>
 
       {showAdd && (
         <div className="mb-6 rounded-2xl border border-border/60 bg-card/50 p-6">
-          <h3 className="mb-4 font-display text-lg font-bold text-white">Add new season</h3>
-          <div className="grid gap-4 sm:grid-cols-3">
+          <h3 className="mb-4 font-display text-lg font-bold text-foreground">Add new season</h3>
+          <form onSubmit={handleCreate} className="grid gap-4 sm:grid-cols-3">
             <div className="space-y-2">
               <Label>Year</Label>
-              <Input type="number" placeholder="2027" className="rounded-xl bg-background/50" />
+              <Input type="number" value={year} onChange={(e) => setYear(e.target.value)} className="rounded-xl bg-background/50" />
             </div>
             <div className="space-y-2">
               <Label>Season</Label>
-              <select className="h-10 w-full rounded-xl border border-input bg-background/50 px-3 text-sm">
-                <option>Summer</option>
-                <option>Winter</option>
+              <select value={type} onChange={(e) => setType(e.target.value as 'summer' | 'winter')} className="h-10 w-full rounded-xl border border-input bg-background/50 px-3 text-sm">
+                <option value="summer">Summer</option>
+                <option value="winter">Winter</option>
               </select>
             </div>
             <div className="flex items-end gap-2">
-              <Button size="sm" className="rounded-full" onClick={() => setShowAdd(false)}><Check className="mr-1.5 h-4 w-4" /> Create</Button>
-              <Button size="sm" variant="ghost" className="rounded-full" onClick={() => setShowAdd(false)}>Cancel</Button>
+              <Button type="submit" size="sm" className="rounded-full" disabled={submitting}>
+                {submitting ? <Loader2 className="mr-1.5 h-4 w-4 animate-spin" /> : <Check className="mr-1.5 h-4 w-4" />} Create
+              </Button>
+              <Button type="button" size="sm" variant="ghost" className="rounded-full" onClick={() => setShowAdd(false)}>Cancel</Button>
             </div>
-          </div>
+            {formError && <p className="text-sm text-rose-400 sm:col-span-3">{formError}</p>}
+          </form>
         </div>
       )}
 
       <div className="grid gap-4 sm:grid-cols-2">
-        {seasons.map((s) => (
+        {sorted.map((s) => {
+          const Icon = getSeasonIcon(s.iconName);
+          return (
           <div key={s.id} className="rounded-2xl border border-border/60 bg-card/50 p-6">
             <div className="flex items-start justify-between">
               <div className="flex items-center gap-3">
-                <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-primary/12 text-primary"><s.icon className="h-5 w-5" /></div>
+                <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-primary/12 text-primary"><Icon className="h-5 w-5" /></div>
                 <div>
-                  <h3 className="font-display text-lg font-bold text-white">{s.label}</h3>
+                  <h3 className="font-display text-lg font-bold text-foreground">{s.label}</h3>
                   <p className="text-sm text-muted-foreground">{s.camps.length} camps</p>
                 </div>
               </div>
-              <Badge className={cn('rounded-full border', s.open ? 'border-emerald-500/20 bg-emerald-500/15 text-emerald-400' : 'border-sky-500/20 bg-sky-500/15 text-sky-400')}>
-                {s.open ? 'Open' : 'Closed'}
+              <Badge className={cn('rounded-full border capitalize', s.dbStatus === 'open' ? 'border-emerald-500/20 bg-emerald-500/15 text-emerald-400' : s.dbStatus === 'draft' ? 'border-sky-500/20 bg-sky-500/15 text-sky-400' : 'border-zinc-500/20 bg-zinc-500/15 text-zinc-400')}>
+                {s.dbStatus}
               </Badge>
             </div>
-            <p className="mt-3 text-sm text-muted-foreground">{s.tagline}</p>
             <div className="mt-4 flex items-center gap-2">
-              <Button size="sm" variant="outline" className="rounded-full"><Pencil className="mr-1.5 h-3.5 w-3.5" /> Edit</Button>
-              <Button size="sm" variant="outline" className="rounded-full">{s.open ? 'Close season' : 'Open season'}</Button>
-              <Button
-                size="sm"
-                variant="ghost"
-                className="rounded-full text-rose-400 hover:text-rose-300"
-                onClick={() => onConfirm({
-                  title: `Delete ${s.label}?`,
-                  description: `This will remove the season and all ${s.camps.length} camps within it. This action cannot be undone.`,
-                  onConfirm: () => {},
-                })}
-              >
-                <Trash2 className="h-3.5 w-3.5" />
+              <Button size="sm" variant="outline" className="rounded-full" disabled={togglingId === s.id} onClick={() => toggleStatus(s)}>
+                {togglingId === s.id ? <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" /> : null}
+                {s.dbStatus === 'open' ? 'Close season' : 'Open season'}
               </Button>
             </div>
           </div>
-        ))}
+          );
+        })}
       </div>
     </div>
   );
 }
 
 /* ========== CAMPS ========== */
-function CampsTab({ onConfirm }: { onConfirm: (s: { title: string; description: string; onConfirm: () => void }) => void }) {
+const emptyCampForm = {
+  season_id: '', camp_type_id: '', slug: '', age_min: '7', age_max: '11', price_egp: '',
+  capacity: '48', date_start: '', date_end: '', description: '', cover_photo_url: '',
+};
+type CampFormState = typeof emptyCampForm;
+
+function CampForm({
+  seasons, camps, campTypes, initial, campBreakdownById, onCancel, onSaved,
+}: {
+  seasons: Season[];
+  /** Existing camps — used to figure out which camp types are already taken per season. */
+  camps: Camp[];
+  campTypes: CampTypeRow[];
+  /** `campTypeName` is display-only (edit mode shows the locked type as text, not a dropdown). */
+  initial: (CampFormState & { id: string; campTypeName: string }) | null;
+  campBreakdownById: Map<string, CampBreakdown>;
+  onCancel: () => void;
+  onSaved: () => void;
+}) {
+  const [form, setForm] = React.useState<CampFormState>(initial ?? emptyCampForm);
+  const [slugTouched, setSlugTouched] = React.useState(!!initial);
+  const [errors, setErrors] = React.useState<string[]>([]);
+  const [submitting, setSubmitting] = React.useState(false);
+
+  function set<K extends keyof CampFormState>(key: K, value: CampFormState[K]) {
+    setForm((f) => ({ ...f, [key]: value }));
+  }
+
+  const selectedSeason = seasons.find((s) => s.id === form.season_id) ?? null;
+
+  // Camp types already used in the selected season (respects the DB's
+  // (season_id, camp_type_id) UNIQUE constraint) — excluded from the
+  // dropdown so Super Admin can't even attempt a duplicate.
+  const usedTypeIds = React.useMemo(
+    () => new Set(camps.filter((c) => c.seasonId === form.season_id).map((c) => c.campTypeId)),
+    [camps, form.season_id]
+  );
+
+  const availableCampTypes = React.useMemo(() => {
+    if (!selectedSeason) return [];
+    return campTypes.filter((ct) =>
+      (ct.applicable_season_type === 'both' || ct.applicable_season_type === selectedSeason.type)
+      && !usedTypeIds.has(ct.id)
+    );
+  }, [campTypes, selectedSeason, usedTypeIds]);
+
+  function handleSeasonChange(seasonId: string) {
+    setForm((f) => ({ ...f, season_id: seasonId, camp_type_id: '' }));
+  }
+
+  function handleCampTypeChange(campTypeId: string) {
+    const type = availableCampTypes.find((ct) => ct.id === campTypeId);
+    setForm((f) => {
+      const next = { ...f, camp_type_id: campTypeId };
+      if (type && selectedSeason && !slugTouched) {
+        next.slug = `${slugify(type.name)}-${selectedSeason.year}`;
+      }
+      return next;
+    });
+  }
+
+  async function handleSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    const validationErrors = validateCampInput(form);
+    if (validationErrors.length > 0) {
+      setErrors(validationErrors);
+      return;
+    }
+    setErrors([]);
+    setSubmitting(true);
+    try {
+      const res = await fetch(initial ? `/api/portal/camps/${initial.id}` : '/api/portal/camps', {
+        method: initial ? 'PATCH' : 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(form),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Failed to save camp');
+      onSaved();
+    } catch (err) {
+      setErrors([err instanceof Error ? err.message : 'Failed to save camp']);
+    } finally {
+      setSubmitting(false);
+    }
+  }
+
+  const existingRegCount = initial ? campBreakdownById.get(initial.id)?.total ?? 0 : 0;
+
+  return (
+    <div className="mb-6 rounded-2xl border border-border/60 bg-card/50 p-6">
+      <h3 className="mb-4 font-display text-lg font-bold text-foreground">{initial ? `Edit ${initial.campTypeName}` : 'Add new camp'}</h3>
+      {initial && existingRegCount > 0 && (
+        <p className="mb-4 rounded-lg border border-amber-500/20 bg-amber-500/10 px-3 py-2 text-xs text-amber-400">
+          This camp has {existingRegCount} existing registration{existingRegCount === 1 ? '' : 's'} — capacity/date changes won't affect them, but consider the impact before shrinking capacity below the current count.
+        </p>
+      )}
+      <form onSubmit={handleSubmit} className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+        <div className="space-y-2 sm:col-span-2 lg:col-span-1">
+          <Label>Season</Label>
+          <select
+            value={form.season_id}
+            onChange={(e) => handleSeasonChange(e.target.value)}
+            disabled={!!initial}
+            className="h-10 w-full rounded-xl border border-input bg-background/50 px-3 text-sm disabled:opacity-60"
+          >
+            <option value="">Select a season</option>
+            {seasons.map((s) => <option key={s.id} value={s.id}>{s.label}</option>)}
+          </select>
+        </div>
+
+        <div className="space-y-2">
+          <Label>Camp type</Label>
+          {initial ? (
+            <div className="flex h-10 items-center rounded-xl border border-input bg-background/30 px-3 text-sm text-muted-foreground">
+              {initial.campTypeName} <span className="ml-2 text-xs">(locked after creation)</span>
+            </div>
+          ) : !form.season_id ? (
+            <div className="flex h-10 items-center rounded-xl border border-input bg-background/30 px-3 text-sm text-muted-foreground">
+              Select a season first
+            </div>
+          ) : availableCampTypes.length === 0 ? (
+            <div className="flex h-10 items-center rounded-xl border border-amber-500/30 bg-amber-500/10 px-3 text-sm text-amber-400">
+              All camp types already added to this season
+            </div>
+          ) : (
+            <select value={form.camp_type_id} onChange={(e) => handleCampTypeChange(e.target.value)} className="h-10 w-full rounded-xl border border-input bg-background/50 px-3 text-sm">
+              <option value="">Select a camp type</option>
+              {availableCampTypes.map((ct) => <option key={ct.id} value={ct.id}>{ct.name}</option>)}
+            </select>
+          )}
+        </div>
+
+        <div className="space-y-2">
+          <Label>Slug</Label>
+          <Input placeholder="kids-1-2026" value={form.slug} onChange={(e) => { setSlugTouched(true); set('slug', e.target.value); }} className="rounded-xl bg-background/50" />
+        </div>
+        <div className="space-y-2"><Label>Start date</Label><Input type="date" value={form.date_start} onChange={(e) => set('date_start', e.target.value)} className="rounded-xl bg-background/50" /></div>
+        <div className="space-y-2"><Label>End date</Label><Input type="date" value={form.date_end} onChange={(e) => set('date_end', e.target.value)} className="rounded-xl bg-background/50" /></div>
+        <div className="space-y-2"><Label>Min age</Label><Input type="number" value={form.age_min} onChange={(e) => set('age_min', e.target.value)} className="rounded-xl bg-background/50" /></div>
+        <div className="space-y-2"><Label>Max age</Label><Input type="number" value={form.age_max} onChange={(e) => set('age_max', e.target.value)} className="rounded-xl bg-background/50" /></div>
+        <div className="space-y-2"><Label>Capacity</Label><Input type="number" value={form.capacity} onChange={(e) => set('capacity', e.target.value)} className="rounded-xl bg-background/50" /></div>
+        <div className="space-y-2"><Label>Price (EGP)</Label><Input type="number" value={form.price_egp} onChange={(e) => set('price_egp', e.target.value)} className="rounded-xl bg-background/50" /></div>
+        <div className="space-y-2 sm:col-span-2 lg:col-span-3">
+          <Label>Description</Label>
+          <Input placeholder="A brief description of the camp..." value={form.description} onChange={(e) => set('description', e.target.value)} className="rounded-xl bg-background/50" />
+        </div>
+        <div className="space-y-2 sm:col-span-2 lg:col-span-3">
+          <Label>Cover photo URL</Label>
+          <Input placeholder="https://... (file upload is a separate future task)" value={form.cover_photo_url} onChange={(e) => set('cover_photo_url', e.target.value)} className="rounded-xl bg-background/50" />
+        </div>
+
+        {errors.length > 0 && (
+          <div className="rounded-lg border border-rose-500/20 bg-rose-500/10 px-3 py-2 text-sm text-rose-400 sm:col-span-2 lg:col-span-3">
+            {errors.map((err, i) => <p key={i}>{err}</p>)}
+          </div>
+        )}
+
+        <div className="flex gap-2 sm:col-span-2 lg:col-span-3">
+          <Button type="submit" size="sm" className="rounded-full" disabled={submitting || (!initial && !form.camp_type_id)}>
+            {submitting ? <Loader2 className="mr-1.5 h-4 w-4 animate-spin" /> : <Check className="mr-1.5 h-4 w-4" />} {initial ? 'Save changes' : 'Create camp'}
+          </Button>
+          <Button type="button" size="sm" variant="ghost" className="rounded-full" onClick={onCancel}>Cancel</Button>
+        </div>
+      </form>
+    </div>
+  );
+}
+
+function CampsTab({
+  camps, seasons, campTypes, campBreakdown, onConfirm,
+}: {
+  camps: Camp[];
+  seasons: Season[];
+  campTypes: CampTypeRow[];
+  campBreakdown: CampBreakdown[];
+  onConfirm: (s: { title: string; description: string; onConfirm: () => void }) => void;
+}) {
+  const router = useRouter();
   const [selectedSeason, setSelectedSeason] = React.useState('all');
   const [showAdd, setShowAdd] = React.useState(false);
+  const [editingCamp, setEditingCamp] = React.useState<Camp | null>(null);
+  const [deletingId, setDeletingId] = React.useState<string | null>(null);
 
-  const camps = selectedSeason === 'all' ? allCamps : allCamps.filter((c) => c.season === selectedSeason);
+  const campBreakdownById = React.useMemo(() => new Map(campBreakdown.map((c) => [c.campId, c])), [campBreakdown]);
+  const filtered = selectedSeason === 'all' ? camps : camps.filter((c) => c.season === selectedSeason);
+
+  function handleSaved() {
+    setShowAdd(false);
+    setEditingCamp(null);
+    router.refresh();
+  }
+
+  async function handleDelete(c: Camp) {
+    setDeletingId(c.id);
+    try {
+      const res = await fetch(`/api/portal/camps/${c.id}`, { method: 'DELETE' });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Failed to delete camp');
+      router.refresh();
+    } catch (err) {
+      onConfirm({ title: 'Could not delete camp', description: err instanceof Error ? err.message : 'Unknown error', onConfirm: () => {} });
+    } finally {
+      setDeletingId(null);
+    }
+  }
 
   return (
     <div>
       <div className="mb-4 flex flex-wrap items-center justify-between gap-4">
         <div className="flex items-center gap-2">
           <span className="text-sm font-semibold text-muted-foreground">Season:</span>
-          <select value={selectedSeason} onChange={(e) => setSelectedSeason(e.target.value)} className="rounded-full border border-border/60 bg-card/50 px-4 py-1.5 text-sm font-medium text-white outline-none">
+          <select value={selectedSeason} onChange={(e) => setSelectedSeason(e.target.value)} className="rounded-full border border-border/60 bg-card/50 px-4 py-1.5 text-sm font-medium text-foreground outline-none">
             <option value="all">All seasons</option>
             <option value="summer">Summer</option>
             <option value="winter">Winter</option>
           </select>
         </div>
-        <Button size="sm" className="rounded-full glow-orange" onClick={() => setShowAdd(true)}>
+        <Button size="sm" className="rounded-full glow-orange" onClick={() => { setEditingCamp(null); setShowAdd((v) => !v); }}>
           <Plus className="mr-1.5 h-4 w-4" /> Add Camp
         </Button>
       </div>
 
       {showAdd && (
-        <div className="mb-6 rounded-2xl border border-border/60 bg-card/50 p-6">
-          <h3 className="mb-4 font-display text-lg font-bold text-white">Add new camp</h3>
-          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-            <div className="space-y-2"><Label>Camp name</Label><Input placeholder="Kids Camp 5" className="rounded-xl bg-background/50" /></div>
-            <div className="space-y-2"><Label>Start date</Label><Input type="date" className="rounded-xl bg-background/50" /></div>
-            <div className="space-y-2"><Label>End date</Label><Input type="date" className="rounded-xl bg-background/50" /></div>
-            <div className="space-y-2"><Label>Age range</Label><Input placeholder="7-11" className="rounded-xl bg-background/50" /></div>
-            <div className="space-y-2"><Label>Capacity</Label><Input type="number" placeholder="80" className="rounded-xl bg-background/50" /></div>
-            <div className="space-y-2"><Label>Price (EGP)</Label><Input type="number" placeholder="6500" className="rounded-xl bg-background/50" /></div>
-            <div className="space-y-2 sm:col-span-2 lg:col-span-3">
-              <Label>Description</Label>
-              <Input placeholder="A brief description of the camp..." className="rounded-xl bg-background/50" />
-            </div>
-            <div className="space-y-2">
-              <Label>Cover photo</Label>
-              <div className="flex h-20 cursor-pointer items-center justify-center rounded-xl border border-dashed border-border/60 bg-background/20 text-muted-foreground hover:border-primary/40">
-                <ImageIcon className="h-5 w-5" />
-              </div>
-            </div>
-          </div>
-          <div className="mt-4 flex gap-2">
-            <Button size="sm" className="rounded-full" onClick={() => setShowAdd(false)}><Check className="mr-1.5 h-4 w-4" /> Create camp</Button>
-            <Button size="sm" variant="ghost" className="rounded-full" onClick={() => setShowAdd(false)}>Cancel</Button>
-          </div>
-        </div>
+        <CampForm seasons={seasons} camps={camps} campTypes={campTypes} initial={null} campBreakdownById={campBreakdownById} onCancel={() => setShowAdd(false)} onSaved={handleSaved} />
+      )}
+      {editingCamp && (
+        <CampForm
+          seasons={seasons}
+          camps={camps}
+          campTypes={campTypes}
+          initial={{
+            id: editingCamp.id,
+            season_id: editingCamp.seasonId,
+            camp_type_id: editingCamp.campTypeId,
+            campTypeName: editingCamp.name,
+            slug: editingCamp.slug,
+            age_min: String(editingCamp.ageMin),
+            age_max: String(editingCamp.ageMax),
+            price_egp: String(editingCamp.price),
+            capacity: String(editingCamp.capacity),
+            date_start: editingCamp.dateStart,
+            date_end: editingCamp.dateEnd,
+            description: editingCamp.description,
+            cover_photo_url: editingCamp.coverPhotoUrl ?? '',
+          }}
+          campBreakdownById={campBreakdownById}
+          onCancel={() => setEditingCamp(null)}
+          onSaved={handleSaved}
+        />
       )}
 
       <div className="overflow-hidden rounded-2xl border border-border/60 bg-card/50">
@@ -306,33 +600,40 @@ function CampsTab({ onConfirm }: { onConfirm: (s: { title: string; description: 
             </tr>
           </thead>
           <tbody>
-            {camps.map((c) => (
-              <tr key={c.id} className="border-b border-border/40 transition-colors hover:bg-muted/30">
-                <td className="px-4 py-3 font-medium text-white">{c.name}</td>
-                <td className="px-4 py-3 capitalize text-muted-foreground">{c.season} {c.year}</td>
-                <td className="px-4 py-3 text-muted-foreground">{new Date(c.startDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })} – {new Date(c.endDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}</td>
-                <td className="px-4 py-3 text-muted-foreground">{c.ageRange}</td>
-                <td className="px-4 py-3 text-muted-foreground">{c.spotsLeft}/{c.capacity}</td>
-                <td className="px-4 py-3 text-muted-foreground">EGP {c.price.toLocaleString()}</td>
-                <td className="px-4 py-3">
-                  <div className="flex items-center gap-1">
-                    <Button size="icon" variant="ghost" className="h-8 w-8 rounded-full text-muted-foreground hover:text-white"><Pencil className="h-3.5 w-3.5" /></Button>
-                    <Button
-                      size="icon"
-                      variant="ghost"
-                      className="h-8 w-8 rounded-full text-rose-400 hover:text-rose-300"
-                      onClick={() => onConfirm({
-                        title: `Remove ${c.name}?`,
-                        description: `This will remove the camp and all its registrations. This action cannot be undone.`,
-                        onConfirm: () => {},
-                      })}
-                    >
-                      <Trash2 className="h-3.5 w-3.5" />
-                    </Button>
-                  </div>
-                </td>
-              </tr>
-            ))}
+            {filtered.map((c) => {
+              const regCount = campBreakdownById.get(c.id)?.total ?? 0;
+              return (
+                <tr key={c.id} className="border-b border-border/40 transition-colors hover:bg-muted/30">
+                  <td className="px-4 py-3 font-medium text-foreground">{c.name}</td>
+                  <td className="px-4 py-3 capitalize text-muted-foreground">{c.season} {c.year}</td>
+                  <td className="px-4 py-3 text-muted-foreground">{formatDateRange(c.dateStart, c.dateEnd)}</td>
+                  <td className="px-4 py-3 text-muted-foreground">{c.ageRange}</td>
+                  <td className="px-4 py-3 text-muted-foreground">{c.spotsLeft}/{c.capacity}</td>
+                  <td className="px-4 py-3 text-muted-foreground">EGP {c.price.toLocaleString()}</td>
+                  <td className="px-4 py-3">
+                    <div className="flex items-center gap-1">
+                      <Button size="icon" variant="ghost" className="h-8 w-8 rounded-full text-muted-foreground hover:text-foreground" onClick={() => { setShowAdd(false); setEditingCamp(c); }}>
+                        <Pencil className="h-3.5 w-3.5" />
+                      </Button>
+                      <Button
+                        size="icon"
+                        variant="ghost"
+                        disabled={regCount > 0 || deletingId === c.id}
+                        title={regCount > 0 ? `Cannot delete — ${regCount} registration${regCount === 1 ? '' : 's'} exist` : undefined}
+                        className="h-8 w-8 rounded-full text-rose-400 hover:text-rose-300 disabled:text-muted-foreground/40"
+                        onClick={() => onConfirm({
+                          title: `Delete ${c.name}?`,
+                          description: 'This will permanently remove the camp. This action cannot be undone.',
+                          onConfirm: () => handleDelete(c),
+                        })}
+                      >
+                        {deletingId === c.id ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Trash2 className="h-3.5 w-3.5" />}
+                      </Button>
+                    </div>
+                  </td>
+                </tr>
+              );
+            })}
           </tbody>
         </table>
       </div>
@@ -341,48 +642,47 @@ function CampsTab({ onConfirm }: { onConfirm: (s: { title: string; description: 
 }
 
 /* ========== REGISTRATIONS ========== */
-function RegistrationsTab({ onConfirm }: { onConfirm: (s: { title: string; description: string; onConfirm: () => void }) => void }) {
+function RegistrationsTab({
+  registrations, totalCount, page, pageSize, camps, campFilter, statusFilter, onConfirm,
+}: {
+  registrations: RegistrationRow[];
+  totalCount: number;
+  page: number;
+  pageSize: number;
+  camps: Camp[];
+  campFilter: string;
+  statusFilter: string;
+  onConfirm: (s: { title: string; description: string; onConfirm: () => void }) => void;
+}) {
+  const router = useRouter();
   const [showAdd, setShowAdd] = React.useState(false);
+  const totalPages = Math.max(1, Math.ceil(totalCount / pageSize));
 
-  const columns: Column<Registration>[] = [
-    { key: 'id', label: 'ID', sortable: true, render: (r) => <span className="font-mono text-xs text-muted-foreground">{r.id}</span> },
-    { key: 'camperName', label: 'Camper', sortable: true, render: (r) => <span className="font-medium">{r.camperName}</span> },
-    { key: 'campName', label: 'Camp', sortable: true },
-    { key: 'season', label: 'Season', sortable: true },
-    { key: 'registeredAt', label: 'Registered', sortable: true, render: (r) => <span className="text-xs text-muted-foreground">{new Date(r.registeredAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}</span> },
-    { key: 'status', label: 'Payment', sortable: true, render: (r) => (
-      <select
-        defaultValue={r.status}
-        className="rounded-full border border-border/60 bg-card/50 px-2 py-0.5 text-xs font-semibold text-white outline-none"
-      >
-        <option value="confirmed">confirmed</option>
-        <option value="pending">pending</option>
-        <option value="waitlist">waitlist</option>
-      </select>
+  function updateParams(next: Record<string, string>) {
+    const params = new URLSearchParams({ tab: 'registrations', camp: campFilter, status: statusFilter, page: '1', ...next });
+    router.push(`/portal/super-admin?${params.toString()}`);
+  }
+
+  const columns: Column<RegistrationRow>[] = [
+    { key: 'registration_number', label: 'Reg #', sortable: true, render: (r) => <span className="font-mono text-xs text-muted-foreground">{r.registration_number}</span> },
+    { key: 'camper_name', label: 'Camper', sortable: true, render: (r) => <span className="font-medium">{r.camper_name}</span> },
+    { key: 'camps', label: 'Camp', render: (r) => r.camps?.name ?? '—' },
+    { key: 'created_at', label: 'Registered', sortable: true, render: (r) => <span className="text-xs text-muted-foreground">{new Date(r.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}</span> },
+    { key: 'status', label: 'Status', sortable: true, render: (r) => (
+      <span className={cn('inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-semibold', statusBadge[r.status])}>{r.status.replace('_', ' ')}</span>
     ) },
-    { key: 'guardianName', label: 'Guardian' },
+    { key: 'parent_name', label: 'Guardian' },
+    { key: 'email_status', label: 'Email', render: (r) => (
+      <EmailStatusCell registrationId={r.id} status={r.email_status} failureReason={r.email_failure_reason} />
+    ) },
     { key: 'actions', label: 'Actions', render: (r) => (
-      <div className="flex items-center gap-1">
-        <Button size="icon" variant="ghost" className="h-8 w-8 rounded-full text-muted-foreground hover:text-white"><Pencil className="h-3.5 w-3.5" /></Button>
-        <Button
-          size="icon"
-          variant="ghost"
-          className="h-8 w-8 rounded-full text-rose-400 hover:text-rose-300"
-          onClick={() => onConfirm({
-            title: `Cancel ${r.camperName}'s registration?`,
-            description: `This will remove the registration for ${r.campName}. This action cannot be undone.`,
-            onConfirm: () => {},
-          })}
-        >
-          <Trash2 className="h-3.5 w-3.5" />
-        </Button>
-      </div>
+      <RegistrationActionsCell registration={r} onConfirm={onConfirm} />
     ) },
   ];
 
   function exportCSV() {
-    const headers = ['ID', 'Camper', 'Camp', 'Season', 'Age', 'Gender', 'Guardian', 'Email', 'Phone', 'Price', 'Status', 'Registered'];
-    const rows = mockRegistrations.map((r) => [r.id, r.camperName, r.campName, r.season, r.age, r.gender, r.guardianName, r.email, r.phone, r.price, r.status, r.registeredAt]);
+    const headers = ['Reg #', 'Camper', 'Camp', 'Status', 'Guardian', 'Email', 'Phone', 'Registered'];
+    const rows = registrations.map((r) => [r.registration_number, r.camper_name, r.camps?.name ?? '', r.status, r.parent_name, r.email, r.mobile_phone, r.created_at]);
     const csv = [headers, ...rows].map((row) => row.map((c) => `"${c}"`).join(',')).join('\n');
     const blob = new Blob([csv], { type: 'text/csv' });
     const url = URL.createObjectURL(blob);
@@ -395,133 +695,236 @@ function RegistrationsTab({ onConfirm }: { onConfirm: (s: { title: string; descr
 
   return (
     <div>
-      <div className="mb-4 flex justify-end gap-2">
-        <Button onClick={exportCSV} size="sm" variant="outline" className="rounded-full border-border/60 bg-card/50">
-          <Download className="mr-1.5 h-4 w-4" /> Export CSV
-        </Button>
-        <Button size="sm" className="rounded-full glow-orange" onClick={() => setShowAdd(true)}>
-          <Plus className="mr-1.5 h-4 w-4" /> Add Registration
-        </Button>
+      <div className="mb-4 flex flex-wrap items-center justify-between gap-4">
+        <div className="flex items-center gap-2">
+          <span className="text-sm font-semibold text-muted-foreground">Camp:</span>
+          <select value={campFilter} onChange={(e) => updateParams({ camp: e.target.value })} className="rounded-full border border-border/60 bg-card/50 px-4 py-1.5 text-sm font-medium text-foreground outline-none">
+            <option value="all">All camps</option>
+            {camps.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
+          </select>
+          <select value={statusFilter} onChange={(e) => updateParams({ status: e.target.value })} className="rounded-full border border-border/60 bg-card/50 px-4 py-1.5 text-sm font-medium text-foreground outline-none">
+            <option value="all">All statuses</option>
+            <option value="pending_payment">Pending payment</option>
+            <option value="payment_submitted">Payment submitted</option>
+            <option value="confirmed">Confirmed</option>
+            <option value="waitlisted">Waitlisted</option>
+            <option value="refunded">Refunded</option>
+          </select>
+        </div>
+        <div className="flex gap-2">
+          <Button onClick={exportCSV} size="sm" variant="outline" className="rounded-full border-border/60 bg-card/50">
+            <Download className="mr-1.5 h-4 w-4" /> Export page CSV
+          </Button>
+          <Button size="sm" className="rounded-full glow-orange" onClick={() => setShowAdd(true)}>
+            <Plus className="mr-1.5 h-4 w-4" /> Add Registration
+          </Button>
+        </div>
       </div>
 
       {showAdd && (
         <div className="mb-6 rounded-2xl border border-border/60 bg-card/50 p-6">
-          <h3 className="mb-4 font-display text-lg font-bold text-white">Add registration manually</h3>
-          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-            <div className="space-y-2"><Label>Camper name</Label><Input placeholder="Full name" className="rounded-xl bg-background/50" /></div>
-            <div className="space-y-2"><Label>Age</Label><Input type="number" placeholder="12" className="rounded-xl bg-background/50" /></div>
-            <div className="space-y-2"><Label>Gender</Label><select className="h-10 w-full rounded-xl border border-input bg-background/50 px-3 text-sm"><option>Female</option><option>Male</option></select></div>
-            <div className="space-y-2"><Label>Camp</Label><select className="h-10 w-full rounded-xl border border-input bg-background/50 px-3 text-sm">{allCamps.map((c) => <option key={c.id}>{c.name}</option>)}</select></div>
-            <div className="space-y-2"><Label>Guardian name</Label><Input placeholder="Parent name" className="rounded-xl bg-background/50" /></div>
-            <div className="space-y-2"><Label>Email</Label><Input type="email" placeholder="you@example.com" className="rounded-xl bg-background/50" /></div>
-            <div className="space-y-2"><Label>Phone</Label><Input type="tel" placeholder="+20 100 000 0000" className="rounded-xl bg-background/50" /></div>
-            <div className="space-y-2"><Label>Status</Label><select className="h-10 w-full rounded-xl border border-input bg-background/50 px-3 text-sm"><option value="confirmed">Confirmed</option><option value="pending">Pending</option><option value="waitlist">Waitlist</option></select></div>
-          </div>
+          <h3 className="mb-4 font-display text-lg font-bold text-foreground">Add registration manually</h3>
+          <p className="text-sm text-muted-foreground">Manual registration entry isn't wired to the live DB yet — deferred alongside the other mutation actions in this tab.</p>
           <div className="mt-4 flex gap-2">
-            <Button size="sm" className="rounded-full" onClick={() => setShowAdd(false)}><Check className="mr-1.5 h-4 w-4" /> Add registration</Button>
-            <Button size="sm" variant="ghost" className="rounded-full" onClick={() => setShowAdd(false)}>Cancel</Button>
+            <Button size="sm" variant="ghost" className="rounded-full" onClick={() => setShowAdd(false)}>Close</Button>
           </div>
         </div>
       )}
 
       <AdminDataTable
-        data={mockRegistrations}
+        data={registrations}
         columns={columns}
-        searchKeys={['camperName', 'campName', 'guardianName', 'email', 'id']}
+        pageSize={pageSize}
+        searchKeys={['camper_name', 'parent_name', 'email', 'registration_number']}
       />
+      <div className="mt-4 flex items-center justify-end gap-2">
+        <Button variant="outline" size="icon" className="h-8 w-8 rounded-full border-border/60 bg-transparent" disabled={page <= 1} onClick={() => updateParams({ page: String(page - 1) })}>
+          <ChevronLeft className="h-4 w-4" />
+        </Button>
+        <span className="text-xs text-muted-foreground">Page {page} / {totalPages}</span>
+        <Button variant="outline" size="icon" className="h-8 w-8 rounded-full border-border/60 bg-transparent" disabled={page >= totalPages} onClick={() => updateParams({ page: String(page + 1) })}>
+          <ChevronRight className="h-4 w-4" />
+        </Button>
+      </div>
     </div>
   );
 }
 
-/* ========== CONTENT ========== */
-function ContentTab({ onConfirm }: { onConfirm: (s: { title: string; description: string; onConfirm: () => void }) => void }) {
-  const [section, setSection] = React.useState<'news' | 'gallery'>('news');
+/* ========== STAFF ========== */
+function StaffTab({ staffUsers, onConfirm }: { staffUsers: StaffUser[]; onConfirm: (s: { title: string; description: string; onConfirm: () => void }) => void }) {
+  const router = useRouter();
+  const [email, setEmail] = React.useState('');
+  const [fullName, setFullName] = React.useState('');
+  const [submitting, setSubmitting] = React.useState(false);
+  const [error, setError] = React.useState<string | null>(null);
+  const [success, setSuccess] = React.useState<string | null>(null);
+  const [statusUpdatingId, setStatusUpdatingId] = React.useState<string | null>(null);
+
+  async function setStaffStatus(u: StaffUser, status: 'active' | 'inactive') {
+    setStatusUpdatingId(u.id);
+    try {
+      const res = await fetch(`/api/portal/staff/${u.id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ status }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Failed to update staff status');
+      router.refresh();
+    } catch (err) {
+      onConfirm({
+        title: 'Failed to update staff status',
+        description: err instanceof Error ? err.message : 'Unknown error',
+        onConfirm: () => {},
+      });
+    } finally {
+      setStatusUpdatingId(null);
+    }
+  }
+
+  async function handleInvite(e: React.FormEvent) {
+    e.preventDefault();
+    setSubmitting(true);
+    setError(null);
+    setSuccess(null);
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 20000);
+    try {
+      const res = await fetch('/api/portal/invite-admin', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, fullName }),
+        signal: controller.signal,
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Failed to send invite');
+      setSuccess(`Invite sent to ${email}.`);
+      setEmail('');
+      setFullName('');
+      router.refresh();
+    } catch (err) {
+      if (err instanceof Error && err.name === 'AbortError') {
+        setError('Invite is taking too long (20s+) — likely the SMTP connection to Gmail is hanging. Check the SMTP settings in the Supabase dashboard.');
+      } else {
+        setError(err instanceof Error ? err.message : 'Failed to send invite');
+      }
+    } finally {
+      clearTimeout(timeout);
+      setSubmitting(false);
+    }
+  }
 
   return (
     <div>
-      <div className="mb-6 flex gap-1 rounded-full border border-border/60 bg-card/50 p-1.5">
-        {(['news', 'gallery'] as const).map((s) => (
-          <button key={s} onClick={() => setSection(s)}
-            className={cn('rounded-full px-5 py-2 text-sm font-semibold capitalize transition-all',
-              section === s ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:text-white')}>
-            {s === 'news' ? 'News & Updates' : 'Photo Gallery'}
-          </button>
-        ))}
+      <div className="rounded-2xl border border-border/60 bg-card/50 p-6">
+        <div className="mb-4 flex items-center gap-2">
+          <UserPlus className="h-5 w-5 text-primary" />
+          <h3 className="font-display text-lg font-bold text-foreground">Invite Admin</h3>
+        </div>
+        <p className="mb-4 text-sm text-muted-foreground">
+          Sends a Supabase Auth invite email (via Supabase's built-in email service) and creates the staff record with the <span className="font-semibold text-foreground">admin</span> role. There is no self-serve sign-up anywhere else in the app — this is the only way new staff accounts get created.
+        </p>
+        <form onSubmit={handleInvite} className="grid gap-4 sm:grid-cols-2">
+          <div className="space-y-2">
+            <Label htmlFor="staffFullName">Full name</Label>
+            <Input id="staffFullName" required value={fullName} onChange={(e) => setFullName(e.target.value)} className="rounded-xl bg-background/50" placeholder="Jane Doe" />
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="staffEmail">Email</Label>
+            <Input id="staffEmail" type="email" required value={email} onChange={(e) => setEmail(e.target.value)} className="rounded-xl bg-background/50" placeholder="jane@ywcacamp.org" />
+          </div>
+          {error && <p className="text-sm text-rose-400 sm:col-span-2">{error}</p>}
+          {success && <p className="text-sm text-emerald-400 sm:col-span-2">{success}</p>}
+          <div className="sm:col-span-2">
+            <Button type="submit" className="rounded-full glow-orange" disabled={submitting}>
+              {submitting ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Sending invite...</> : <><UserPlus className="mr-2 h-4 w-4" /> Invite Admin</>}
+            </Button>
+          </div>
+        </form>
       </div>
 
-      {section === 'news' && (
-        <div>
-          <div className="mb-4 flex justify-end">
-            <Button size="sm" className="rounded-full glow-orange"><Plus className="mr-1.5 h-4 w-4" /> Add article</Button>
-          </div>
-          <div className="space-y-3">
-            {newsItems.map((n) => (
-              <div key={n.id} className="flex items-center gap-3 rounded-xl border border-border/60 bg-card/40 p-4">
-                <div className={cn('h-10 w-10 shrink-0 rounded-lg bg-gradient-to-br', n.accent === 'orange' ? 'from-brand-orange/30' : n.accent === 'teal' ? 'from-brand-teal/30' : 'from-brand-gold/30', 'to-transparent')} />
-                <div className="min-w-0 flex-1">
-                  <p className="truncate font-medium text-white">{n.title}</p>
-                  <p className="text-xs text-muted-foreground">{new Date(n.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })} · {n.tag}</p>
-                </div>
-                <Button size="icon" variant="ghost" className="h-8 w-8 rounded-full text-muted-foreground hover:text-white"><Pencil className="h-3.5 w-3.5" /></Button>
-                <Button
-                  size="icon"
-                  variant="ghost"
-                  className="h-8 w-8 rounded-full text-rose-400 hover:text-rose-300"
-                  onClick={() => onConfirm({
-                    title: `Delete "${n.title}"?`,
-                    description: 'This news article will be permanently removed. This action cannot be undone.',
-                    onConfirm: () => {},
-                  })}
-                >
-                  <Trash2 className="h-3.5 w-3.5" />
-                </Button>
-              </div>
-            ))}
-          </div>
+      <div className="mt-8">
+        <h3 className="mb-4 font-display text-lg font-bold text-foreground">Staff accounts</h3>
+        <div className="overflow-hidden rounded-2xl border border-border/60 bg-card/50">
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="border-b border-border/60">
+                {['Name', 'Email', 'Role', 'Status', 'Created', 'Actions'].map((h) => (
+                  <th key={h} className="px-4 py-3 text-left font-semibold text-muted-foreground">{h}</th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {staffUsers.length === 0 ? (
+                <tr><td colSpan={6} className="px-4 py-8 text-center text-muted-foreground">No staff accounts yet.</td></tr>
+              ) : staffUsers.map((u) => (
+                <tr key={u.id} className="border-b border-border/40 transition-colors hover:bg-muted/30">
+                  <td className="px-4 py-3 font-medium text-foreground">{u.full_name}</td>
+                  <td className="px-4 py-3 text-muted-foreground">{u.email}</td>
+                  <td className="px-4 py-3">
+                    <span className={cn('inline-flex items-center gap-1 rounded-full border px-2.5 py-0.5 text-xs font-semibold',
+                      u.role === 'super_admin' ? 'border-emerald-500/20 bg-emerald-500/15 text-emerald-400' : 'border-sky-500/20 bg-sky-500/15 text-sky-400')}>
+                      {u.role === 'super_admin' && <ShieldCheck className="h-3 w-3" />}
+                      {u.role.replace('_', ' ')}
+                    </span>
+                  </td>
+                  <td className="px-4 py-3">
+                    <span className={cn('inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-semibold',
+                      u.status === 'active' ? 'border-emerald-500/20 bg-emerald-500/15 text-emerald-400'
+                        : u.status === 'inactive' ? 'border-zinc-500/20 bg-zinc-500/15 text-zinc-400'
+                        : 'border-amber-500/20 bg-amber-500/15 text-amber-400')}>
+                      {u.status === 'active' ? 'Active' : u.status === 'inactive' ? 'Inactive' : 'Pending'}
+                    </span>
+                  </td>
+                  <td className="px-4 py-3 text-muted-foreground">{new Date(u.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}</td>
+                  <td className="px-4 py-3">
+                    {u.role !== 'admin' ? (
+                      <span className="text-xs text-muted-foreground">—</span>
+                    ) : u.status === 'inactive' ? (
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        disabled={statusUpdatingId === u.id}
+                        className="rounded-full"
+                        onClick={() => setStaffStatus(u, 'active')}
+                      >
+                        {statusUpdatingId === u.id ? <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" /> : null}
+                        Activate
+                      </Button>
+                    ) : (
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        disabled={statusUpdatingId === u.id}
+                        className="rounded-full text-rose-400 hover:text-rose-300"
+                        onClick={() => onConfirm({
+                          title: `Deactivate ${u.full_name}?`,
+                          description: 'This immediately blocks them from signing in to the portal. You can reactivate them later.',
+                          onConfirm: () => setStaffStatus(u, 'inactive'),
+                        })}
+                      >
+                        {statusUpdatingId === u.id ? <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" /> : null}
+                        Deactivate
+                      </Button>
+                    )}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
         </div>
-      )}
-
-      {section === 'gallery' && (
-        <div>
-          <div className="mb-4 flex justify-end">
-            <Button size="sm" className="rounded-full glow-orange"><Plus className="mr-1.5 h-4 w-4" /> Upload photos</Button>
-          </div>
-          <div className="grid grid-cols-3 gap-3 sm:grid-cols-4 lg:grid-cols-6">
-            {Array.from({ length: 12 }).map((_, i) => (
-              <div key={i} className="group relative aspect-square overflow-hidden rounded-lg border border-border/60 bg-gradient-to-br from-card to-card/30">
-                <div className="absolute inset-0 bg-grid opacity-20" />
-                <div className="absolute inset-0 flex items-center justify-center opacity-0 transition-opacity group-hover:opacity-100">
-                  <Button
-                    size="icon"
-                    variant="ghost"
-                    className="h-8 w-8 rounded-full bg-background/70 text-rose-400"
-                    onClick={() => onConfirm({
-                      title: 'Delete this photo?',
-                      description: 'This image will be permanently removed from the gallery. This action cannot be undone.',
-                      onConfirm: () => {},
-                    })}
-                  >
-                    <Trash2 className="h-3.5 w-3.5" />
-                  </Button>
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
+      </div>
     </div>
   );
 }
-
-/* ========== SETTINGS ========== */
+/* ========== SETTINGS (static — site_settings DB wiring deferred) ========== */
 function SettingsTab() {
   return (
     <div className="max-w-2xl space-y-8">
-      {/* Announcement banner */}
       <div className="rounded-2xl border border-border/60 bg-card/50 p-6">
         <div className="mb-4 flex items-center gap-2">
           <Megaphone className="h-5 w-5 text-primary" />
-          <h3 className="font-display text-lg font-bold text-white">Site-wide announcement</h3>
+          <h3 className="font-display text-lg font-bold text-foreground">Site-wide announcement</h3>
         </div>
         <div className="space-y-2">
           <Label>Announcement text</Label>
@@ -530,11 +933,10 @@ function SettingsTab() {
         </div>
       </div>
 
-      {/* Contact info */}
       <div className="rounded-2xl border border-border/60 bg-card/50 p-6">
         <div className="mb-4 flex items-center gap-2">
           <Mail className="h-5 w-5 text-primary" />
-          <h3 className="font-display text-lg font-bold text-white">Contact information</h3>
+          <h3 className="font-display text-lg font-bold text-foreground">Contact information</h3>
         </div>
         <div className="grid gap-4 sm:grid-cols-2">
           <div className="space-y-2"><Label>Email</Label><Input defaultValue="hello@ywcacamp.org" className="rounded-xl bg-background/50" /></div>
@@ -543,11 +945,10 @@ function SettingsTab() {
         </div>
       </div>
 
-      {/* Social links */}
       <div className="rounded-2xl border border-border/60 bg-card/50 p-6">
         <div className="mb-4 flex items-center gap-2">
           <MapPin className="h-5 w-5 text-primary" />
-          <h3 className="font-display text-lg font-bold text-white">Social media links</h3>
+          <h3 className="font-display text-lg font-bold text-foreground">Social media links</h3>
         </div>
         <div className="grid gap-4 sm:grid-cols-3">
           <div className="space-y-2"><Label>Facebook</Label><Input placeholder="https://facebook.com/..." className="rounded-xl bg-background/50" /></div>

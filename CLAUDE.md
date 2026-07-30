@@ -34,7 +34,12 @@ Path alias `@/*` maps to repo root (see `tsconfig.json`).
 
 Styling: Tailwind CSS with a custom theme in `tailwind.config.ts` (camp brand accent colors: orange/teal/gold, referenced throughout `lib/camp-data.ts` and section components).
 
-Env vars required: `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY` (see `.env`).
+Env vars required (see `.env.local`):
+- `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` — client-side, RLS-scoped.
+- `SUPABASE_SERVICE_ROLE_KEY` — server-only (route handlers), bypasses RLS. Never expose to the browser.
+- `NEXT_PUBLIC_SITE_URL` — used to build the `redirectTo` link for Supabase Auth invite emails (`app/api/portal/invite-admin/route.ts`). Currently `http://localhost:3000` — **must be updated to the real production domain before/at deploy**, or invite links will redirect to localhost in production.
+- `GOOGLE_OAUTH_CLIENT_ID`, `GOOGLE_OAUTH_CLIENT_SECRET`, `GOOGLE_OAUTH_REFRESH_TOKEN` — server-only, used by `lib/google-drive.ts` to upload registration documents (certificates/payment screenshots) to Drive under a personal Google account (service accounts have no Drive storage quota on a free/non-Workspace account, so JWT auth 403s). The refresh token is long-lived but **not permanent** — if it's ever revoked (account password change, 6+ months unused, or manually revoked under Google Account → Security → Third-party access), uploads start failing with an auth error and the OAuth Playground consent flow must be redone (Drive scope, this project's client ID/secret) to mint a new refresh token.
+- `CRON_SECRET` — server-only, secures `app/api/cron/retry-quota-failed-emails/route.ts` against being called by anyone who finds the URL. Vercel automatically sends `Authorization: Bearer ${CRON_SECRET}` on cron-triggered requests once this env var is set on the Vercel project (see `vercel.json`) — must be set there before deploy, or the cron trigger path is unauthenticated (the manual staff-session path still works either way). `vercel.json`'s schedule (`15 22 * * *`) is UTC — Vercel Cron has no timezone config, so this is hand-converted from "shortly after midnight Africa/Cairo" (UTC+2 year-round, no DST) → 22:15 UTC. Cron only fires once actually deployed to Vercel; does nothing in local dev.
 
 
 # YWCA Camp Website — Project Context
@@ -45,7 +50,7 @@ generated in Bolt.new from a v0-style prompt. No backend/DB yet.
 
 ## Roles
 - Guest: browse camps, register
-- Admin: /portal/admin — VIEW ONLY dashboard of registrations
+- Admin: /portal/admin — registrations dashboard; can confirm payments, mark refunds, promote from the waitlist, and manage news/gallery content. Cannot touch seasons/camps or staff accounts (Super Admin only).
 - Super Admin: /portal/super-admin — full CRUD on seasons, camps, content, registrations
 - Admin/Super Admin routes are NOT linked in public nav — reachable only by
   direct URL, and will need real auth (not just hidden routes)

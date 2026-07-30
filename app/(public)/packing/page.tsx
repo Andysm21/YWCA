@@ -8,7 +8,7 @@ export default function PackingPage() {
     <>
       <PageHeader
         eyebrow="Packing list"
-        title={<>Pack <span className="gradient-text-orange">smart</span>, pack <span className="gradient-text-teal">light</span></>}
+        title={<>Pack <span className="gradient-text-orange">smart</span>, pack <span className="gradient-text-navy">light</span></>}
         subtitle="Everything your camper needs for a week at YWCA Camp. Check items off as you pack."
       />
       <PackingContent />

@@ -1,8 +1,8 @@
 import { cn } from '@/lib/utils';
-import type { CampStatus } from '@/lib/camp-data';
+import type { DisplayStatus } from '@/lib/camp-data';
 import { getStatusLabel } from '@/lib/camp-data';
 
-const statusClasses: Record<CampStatus, string> = {
+const statusClasses: Record<DisplayStatus, string> = {
   open: 'bg-emerald-500/15 text-emerald-400 border-emerald-500/20',
   filling: 'bg-amber-500/15 text-amber-400 border-amber-500/20',
   waitlist: 'bg-rose-500/15 text-rose-400 border-rose-500/20',
@@ -14,7 +14,7 @@ export function StatusPill({
   status,
   className,
 }: {
-  status: CampStatus;
+  status: DisplayStatus;
   className?: string;
 }) {
   return (

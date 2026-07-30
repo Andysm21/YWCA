@@ -6,7 +6,8 @@ import { ArrowUpRight, Users, Calendar } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardFooter, CardHeader } from '@/components/ui/card';
 import { StatusPill } from '@/components/shared/status-pill';
-import { formatDateRange, formatPrice, type Camp } from '@/lib/camp-data';
+import { formatDateRange, formatPrice, getStatusLabel, type Camp } from '@/lib/camp-data';
+import { getCampIcon } from '@/lib/icon-map';
 import { cn } from '@/lib/utils';
 
 const accentClasses: Record<Camp['accent'], { ring: string; glow: string; iconBg: string; bar: string }> = {
@@ -17,10 +18,10 @@ const accentClasses: Record<Camp['accent'], { ring: string; glow: string; iconBg
     bar: 'from-brand-orange to-brand-ember',
   },
   teal: {
-    ring: 'hover:border-brand-teal/50',
-    glow: 'from-brand-teal/25',
-    iconBg: 'bg-brand-teal/15 text-brand-teal',
-    bar: 'from-brand-teal to-[hsl(200_90%_50%)]',
+    ring: 'hover:border-brand-navy/50',
+    glow: 'from-brand-navy/25',
+    iconBg: 'bg-brand-navy/15 text-brand-navy',
+    bar: 'from-brand-navy to-[hsl(228_25%_38%)]',
   },
   gold: {
     ring: 'hover:border-brand-gold/50',
@@ -32,12 +33,13 @@ const accentClasses: Record<Camp['accent'], { ring: string; glow: string; iconBg
 
 export function CampCard({ camp }: { camp: Camp }) {
   const a = accentClasses[camp.accent];
-  const full = camp.spotsLeft === 0;
+  const full = camp.displayStatus === 'waitlist';
+  const Icon = getCampIcon(camp.iconName);
 
   return (
     <Card
       className={cn(
-        'group relative flex flex-col overflow-hidden border border-border/60 bg-card/50 backdrop-blur-sm transition-all duration-300 hover:-translate-y-1.5 hover:border-primary/40 hover:bg-card',
+        'group relative flex flex-col overflow-hidden border border-border/60 bg-card/50 backdrop-blur-sm transition-all duration-300 hover:-translate-y-1.5 hover:scale-[1.01] hover:border-primary/40 hover:bg-card hover:shadow-[0_20px_60px_-20px_hsl(var(--primary)/0.35)]',
         a.ring
       )}
     >
@@ -47,43 +49,41 @@ export function CampCard({ camp }: { camp: Camp }) {
       <CardHeader className="flex flex-row items-start justify-between gap-3 pb-4 pt-5">
         <div className="flex items-center gap-3">
           <div className={cn('flex h-11 w-11 items-center justify-center rounded-xl', a.iconBg)}>
-            <camp.icon className="h-5 w-5" />
+            <Icon className="h-5 w-5" />
           </div>
           <div>
-            <h3 className="font-display text-lg font-bold leading-tight text-white">{camp.name}</h3>
+            <h3 className="font-display text-lg font-bold leading-tight text-foreground">{camp.name}</h3>
             <p className="text-sm text-muted-foreground">{camp.ageRange} years</p>
           </div>
         </div>
-        <StatusPill status={camp.status} />
+        <StatusPill status={camp.displayStatus} />
       </CardHeader>
 
       <CardContent className="flex flex-1 flex-col gap-4 pb-4">
-        <p className="text-sm leading-relaxed text-muted-foreground">{camp.blurb}</p>
+        <p className="text-sm leading-relaxed text-muted-foreground line-clamp-2">{camp.description}</p>
         <div className="mt-auto grid grid-cols-2 gap-3 text-sm">
           <div className="rounded-lg border border-border/50 bg-background/30 px-3 py-2">
             <p className="flex items-center gap-1 text-xs font-medium uppercase tracking-wide text-muted-foreground">
               <Calendar className="h-3 w-3" /> Dates
             </p>
-            <p className="mt-0.5 font-semibold text-white">{formatDateRange(camp.startDate, camp.endDate)}</p>
+            <p className="mt-0.5 font-semibold text-foreground">{formatDateRange(camp.dateStart, camp.dateEnd)}</p>
           </div>
           <div className="rounded-lg border border-border/50 bg-background/30 px-3 py-2">
             <p className="flex items-center gap-1 text-xs font-medium uppercase tracking-wide text-muted-foreground">
-              <Users className="h-3 w-3" /> Spots
+              <Users className="h-3 w-3" /> Availability
             </p>
-            <p className="mt-0.5 font-semibold text-white">
-              {camp.spotsLeft === 0 ? 'Waitlist' : `${camp.spotsLeft} / ${camp.capacity}`}
-            </p>
+            <p className="mt-0.5 font-semibold text-foreground">{getStatusLabel(camp.displayStatus)}</p>
           </div>
         </div>
       </CardContent>
 
       <CardFooter className="flex items-center justify-between border-t border-border/50 bg-background/20 px-6 py-4">
         <div className="flex flex-col">
-          <span className="font-display text-xl font-bold text-white">EGP {formatPrice(camp.price)}</span>
+          <span className="font-display text-xl font-bold text-foreground">EGP {formatPrice(camp.price)}</span>
           <span className="text-xs text-muted-foreground">per camper</span>
         </div>
         <div className="flex items-center gap-2">
-          <Button asChild size="sm" variant="ghost" className="rounded-full text-muted-foreground hover:text-white">
+          <Button asChild size="sm" variant="ghost" className="rounded-full text-muted-foreground hover:text-foreground">
             <Link href={`/camps/${camp.slug}`}>Details</Link>
           </Button>
           <Button asChild size="sm" variant={full ? 'outline' : 'default'} className={cn('rounded-full', !full && 'glow-orange')}>

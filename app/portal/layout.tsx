@@ -6,9 +6,9 @@ import { PortalSidebar } from '@/components/portal/portal-sidebar';
 
 export default function PortalLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
-  const isLogin = pathname === '/portal/login';
+  const isChromeless = pathname === '/portal/login' || pathname === '/portal/accept-invite';
 
-  if (isLogin) {
+  if (isChromeless) {
     return <div className="min-h-screen">{children}</div>;
   }
 

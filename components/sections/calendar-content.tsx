@@ -2,10 +2,10 @@
 
 import * as React from 'react';
 import { CampCalendar } from '@/components/shared/camp-calendar';
-import { seasons, allCamps } from '@/lib/camp-data';
+import type { Camp } from '@/lib/camp-data';
 import { cn } from '@/lib/utils';
 
-export function CalendarContent() {
+export function CalendarContent({ camps: allCamps }: { camps: Camp[] }) {
   const [seasonFilter, setSeasonFilter] = React.useState<'all' | 'summer' | 'winter'>('all');
   const [year, setYear] = React.useState(2026);
   const [month, setMonth] = React.useState(new Date('2026-06-01'));
@@ -25,7 +25,7 @@ export function CalendarContent() {
           {(['all', 'summer', 'winter'] as const).map((s) => (
             <button key={s} onClick={() => setSeasonFilter(s)}
               className={cn('rounded-full px-5 py-2 text-sm font-semibold capitalize transition-all',
-                seasonFilter === s ? 'bg-gradient-to-r from-brand-orange to-brand-ember text-white' : 'text-muted-foreground hover:text-white')}>
+                seasonFilter === s ? 'bg-gradient-to-r from-brand-orange to-brand-ember text-white' : 'text-muted-foreground hover:text-foreground')}>
               {s === 'all' ? 'All Seasons' : s}
             </button>
           ))}
@@ -34,7 +34,7 @@ export function CalendarContent() {
           {[2026, 2027].map((y) => (
             <button key={y} onClick={() => { setYear(y); setMonth(new Date(y, month.getMonth(), 1)); }}
               className={cn('rounded-full px-4 py-2 text-sm font-semibold transition-all',
-                year === y ? 'bg-secondary text-secondary-foreground' : 'text-muted-foreground hover:text-white')}>
+                year === y ? 'bg-secondary text-secondary-foreground' : 'text-muted-foreground hover:text-foreground')}>
               {y}
             </button>
           ))}
@@ -46,7 +46,7 @@ export function CalendarContent() {
         {months.map((m) => (
           <button key={m.value} onClick={() => setMonth(new Date(year, m.value, 1))}
             className={cn('rounded-full px-3 py-1.5 text-xs font-semibold transition-all',
-              month.getMonth() === m.value ? 'bg-primary/15 text-primary' : 'text-muted-foreground hover:text-white hover:bg-muted/40')}>
+              month.getMonth() === m.value ? 'bg-primary/15 text-primary' : 'text-muted-foreground hover:text-foreground hover:bg-muted/40')}>
             {m.label}
           </button>
         ))}

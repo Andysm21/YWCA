@@ -1,13 +1,16 @@
-import { HomeHero, HomeSeasonExplorer, HomeCalendar, HomeHighlights, HomeNews, HomeGalleryTeaser } from '@/components/sections/home';
+import { HomeHero, HomeSeasonExplorer, HomeCalendar, HomeHighlights, HomeGalleryTeaser } from '@/components/sections/home';
+import { getOpenSeasonsWithCamps } from '@/lib/queries/camps';
 
-export default function Home() {
+export const revalidate = 300;
+
+export default async function Home() {
+  const seasons = await getOpenSeasonsWithCamps();
   return (
     <>
       <HomeHero />
-      <HomeSeasonExplorer />
-      <HomeCalendar />
+      <HomeSeasonExplorer seasons={seasons} />
+      <HomeCalendar seasons={seasons} />
       <HomeHighlights />
-      <HomeNews />
       <HomeGalleryTeaser />
     </>
   );

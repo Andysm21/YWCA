@@ -16,7 +16,7 @@ export function StatCard({
 }) {
   const accentBg = {
     orange: 'bg-brand-orange/15 text-brand-orange',
-    teal: 'bg-brand-teal/15 text-brand-teal',
+    teal: 'bg-brand-navy/15 text-brand-navy',
     gold: 'bg-brand-gold/15 text-brand-gold',
   };
   return (
@@ -25,7 +25,7 @@ export function StatCard({
         <Icon className="h-6 w-6" />
       </div>
       <p className="text-sm text-muted-foreground">{label}</p>
-      <p className="mt-1 font-display text-3xl font-bold text-white">{value}</p>
+      <p className="mt-1 font-display text-3xl font-bold text-foreground">{value}</p>
       {sublabel && <p className="mt-1 text-xs text-muted-foreground">{sublabel}</p>}
     </div>
   );

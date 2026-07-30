@@ -14,7 +14,7 @@ export function FaqContent() {
       <Accordion type="single" collapsible className="space-y-3">
         {faqItems.map((item, i) => (
           <AccordionItem key={i} value={`item-${i}`} className="rounded-xl border border-border/60 bg-card/50 px-6 transition-colors hover:border-primary/30">
-            <AccordionTrigger className="text-left font-display text-base font-bold text-white hover:no-underline">
+            <AccordionTrigger className="text-left font-display text-base font-bold text-foreground hover:no-underline">
               {item.question}
             </AccordionTrigger>
             <AccordionContent className="text-sm leading-relaxed text-muted-foreground">

@@ -86,7 +86,7 @@ export function AdminDataTable<T extends { id: string }>({
                   {col.sortable ? (
                     <button
                       onClick={() => toggleSort(String(col.key))}
-                      className="inline-flex items-center gap-1 font-semibold text-muted-foreground transition-colors hover:text-white"
+                      className="inline-flex items-center gap-1 font-semibold text-muted-foreground transition-colors hover:text-foreground"
                     >
                       {col.label}
                       {sortKey === col.key ? (
@@ -113,7 +113,7 @@ export function AdminDataTable<T extends { id: string }>({
               paged.map((row) => (
                 <tr key={row.id} className="border-b border-border/40 transition-colors hover:bg-muted/30">
                   {columns.map((col) => (
-                    <td key={String(col.key)} className="px-4 py-3 text-white/90">
+                    <td key={String(col.key)} className="px-4 py-3 text-foreground/90">
                       {col.render ? col.render(row) : String(row[col.key as keyof T] ?? '')}
                     </td>
                   ))}

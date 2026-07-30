@@ -1,7 +1,7 @@
 import './globals.css';
 import type { Metadata } from 'next';
 import { Plus_Jakarta_Sans, Bricolage_Grotesque } from 'next/font/google';
-import { RoleProvider } from '@/components/role-context';
+import { ThemeProvider } from '@/components/theme-provider';
 
 const sans = Plus_Jakarta_Sans({
   subsets: ['latin'],
@@ -34,9 +34,11 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="en" className="dark" suppressHydrationWarning>
+    <html lang="en" suppressHydrationWarning>
       <body className={`${sans.variable} ${display.variable} font-sans`}>
-        <RoleProvider>{children}</RoleProvider>
+        <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
+          {children}
+        </ThemeProvider>
       </body>
     </html>
   );

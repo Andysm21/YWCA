@@ -5,18 +5,19 @@ import { ChevronLeft, ChevronRight, Users, X } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { formatDateRange, getStatusLabel, type Camp } from '@/lib/camp-data';
+import { getCampIcon } from '@/lib/icon-map';
 
 type Accent = 'orange' | 'teal' | 'gold';
 
 const accentBar: Record<Accent, string> = {
   orange: 'bg-gradient-to-r from-brand-orange to-brand-ember',
-  teal: 'bg-gradient-to-r from-brand-teal to-[hsl(200_90%_50%)]',
+  teal: 'bg-gradient-to-r from-brand-navy to-[hsl(228_25%_38%)]',
   gold: 'bg-gradient-to-r from-brand-gold to-brand-orange',
 };
 
 const accentDot: Record<Accent, string> = {
   orange: 'bg-brand-orange',
-  teal: 'bg-brand-teal',
+  teal: 'bg-brand-navy',
   gold: 'bg-brand-gold',
 };
 
@@ -81,8 +82,8 @@ export function CampCalendar({
   const monthCamps = React.useMemo(
     () =>
       camps.filter((c) => {
-        const s = new Date(c.startDate);
-        const e = new Date(c.endDate);
+        const s = new Date(c.dateStart);
+        const e = new Date(c.dateEnd);
         const mStart = startOfMonth(month);
         const mEnd = new Date(month.getFullYear(), month.getMonth() + 1, 0);
         return !(e < mStart || s > mEnd);
@@ -91,7 +92,7 @@ export function CampCalendar({
   );
 
   function campsForDay(d: Date) {
-    return camps.filter((c) => inRange(d, new Date(c.startDate), new Date(c.endDate)));
+    return camps.filter((c) => inRange(d, new Date(c.dateStart), new Date(c.dateEnd)));
   }
 
   return (
@@ -99,7 +100,7 @@ export function CampCalendar({
       <div className="glass-strong rounded-2xl border border-border/60 p-4 sm:p-6">
         <div className="mb-6 flex items-center justify-between">
           <div>
-            <h3 className="font-display text-2xl font-bold text-white">
+            <h3 className="font-display text-2xl font-bold text-foreground">
               {MONTHS[month.getMonth()]} <span className="text-muted-foreground">{month.getFullYear()}</span>
             </h3>
             <p className="text-sm text-muted-foreground">
@@ -185,13 +186,10 @@ export function CampCalendar({
             >
               <span className={cn('mt-1 h-2.5 w-2.5 shrink-0 rounded-full', accentDot[c.accent])} />
               <div className="min-w-0 flex-1">
-                <p className="truncate font-semibold text-white">{c.name}</p>
-                <p className="text-xs text-muted-foreground">{formatDateRange(c.startDate, c.endDate)}</p>
+                <p className="truncate font-semibold text-foreground">{c.name}</p>
+                <p className="text-xs text-muted-foreground">{formatDateRange(c.dateStart, c.dateEnd)}</p>
                 <div className="mt-1.5 flex items-center gap-2">
-                  <span className="text-xs font-semibold text-brand-orange">{getStatusLabel(c.status)}</span>
-                  <span className="flex items-center gap-1 text-xs text-muted-foreground">
-                    <Users className="h-3 w-3" /> {c.spotsLeft} left
-                  </span>
+                  <span className="text-xs font-semibold text-brand-orange">{getStatusLabel(c.displayStatus)}</span>
                 </div>
               </div>
             </button>
@@ -205,27 +203,26 @@ export function CampCalendar({
 }
 
 function CampDetailDrawer({ camp, onClose }: { camp: Camp; onClose: () => void }) {
+  const Icon = getCampIcon(camp.iconName);
   return (
     <div className="fixed inset-0 z-[60] flex justify-end">
       <div className="absolute inset-0 bg-black/60 backdrop-blur-sm animate-fade-in" onClick={onClose} />
       <div className="relative z-10 flex h-full w-full max-w-md flex-col border-l border-border bg-card shadow-2xl animate-slide-right">
         <div className="flex items-center justify-between border-b border-border/60 p-5">
-          <h3 className="font-display text-xl font-bold text-white">{camp.name}</h3>
+          <h3 className="font-display text-xl font-bold text-foreground">{camp.name}</h3>
           <Button variant="ghost" size="icon" className="rounded-full" onClick={onClose}>
             <X className="h-5 w-5" />
           </Button>
         </div>
         <div className="flex-1 overflow-y-auto p-5">
           <div className={cn('mb-5 flex h-28 items-center justify-center rounded-xl bg-gradient-to-br', accentBar[camp.accent])}>
-            <camp.icon className="h-10 w-10 text-white/90" />
+            <Icon className="h-10 w-10 text-foreground/90" />
           </div>
           <p className="text-sm leading-relaxed text-muted-foreground">{camp.description}</p>
           <dl className="mt-6 space-y-3 text-sm">
-            <Row label="Dates" value={formatDateRange(camp.startDate, camp.endDate)} />
+            <Row label="Dates" value={formatDateRange(camp.dateStart, camp.dateEnd)} />
             <Row label="Age range" value={`${camp.ageRange} years`} />
-            <Row label="Capacity" value={`${camp.capacity} campers`} />
-            <Row label="Spots left" value={`${camp.spotsLeft}`} />
-            <Row label="Status" value={getStatusLabel(camp.status)} />
+            <Row label="Status" value={getStatusLabel(camp.displayStatus)} />
             <Row label="Price" value={`EGP ${camp.price.toLocaleString()}`} />
           </dl>
         </div>
@@ -243,7 +240,7 @@ function Row({ label, value }: { label: string; value: string }) {
   return (
     <div className="flex items-center justify-between border-b border-border/40 pb-2">
       <dt className="text-muted-foreground">{label}</dt>
-      <dd className="font-semibold text-white">{value}</dd>
+      <dd className="font-semibold text-foreground">{value}</dd>
     </div>
   );
 }

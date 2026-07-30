@@ -2,7 +2,7 @@
 
 import * as React from 'react';
 import { CampCard } from '@/components/shared/camp-card';
-import { seasons, allCamps, type Camp } from '@/lib/camp-data';
+import { type Camp } from '@/lib/camp-data';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 
@@ -22,15 +22,15 @@ const months = [
   { label: 'December', value: '12' },
 ];
 
-export function CampsContent() {
+export function CampsContent({ camps }: { camps: Camp[] }) {
   const [season, setSeason] = React.useState<'all' | 'summer' | 'winter'>('all');
   const [age, setAge] = React.useState('all');
   const [month, setMonth] = React.useState('all');
 
-  const filtered = allCamps.filter((c) => {
+  const filtered = camps.filter((c) => {
     if (season !== 'all' && c.season !== season) return false;
     if (age !== 'all' && c.ageRange !== age) return false;
-    if (month !== 'all' && new Date(c.startDate).getMonth() !== parseInt(month) - 1) return false;
+    if (month !== 'all' && new Date(c.dateStart).getMonth() !== parseInt(month) - 1) return false;
     return true;
   });
 
@@ -44,7 +44,7 @@ export function CampsContent() {
             {(['all', 'summer', 'winter'] as const).map((s) => (
               <button key={s} onClick={() => setSeason(s)}
                 className={cn('rounded-full px-4 py-1.5 text-sm font-semibold capitalize transition-all',
-                  season === s ? 'bg-gradient-to-r from-brand-orange to-brand-ember text-white' : 'text-muted-foreground hover:text-white')}>
+                  season === s ? 'bg-gradient-to-r from-brand-orange to-brand-ember text-white' : 'text-muted-foreground hover:text-foreground')}>
                 {s === 'all' ? 'All' : s}
               </button>
             ))}
@@ -57,7 +57,7 @@ export function CampsContent() {
             {ageGroups.map((a) => (
               <button key={a.value} onClick={() => setAge(a.value)}
                 className={cn('rounded-full px-3 py-1.5 text-sm font-semibold transition-all',
-                  age === a.value ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:text-white')}>
+                  age === a.value ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:text-foreground')}>
                 {a.label}
               </button>
             ))}
@@ -70,7 +70,7 @@ export function CampsContent() {
             {months.map((m) => (
               <button key={m.value} onClick={() => setMonth(m.value)}
                 className={cn('rounded-full px-3 py-1.5 text-sm font-semibold transition-all',
-                  month === m.value ? 'bg-secondary text-secondary-foreground' : 'text-muted-foreground hover:text-white')}>
+                  month === m.value ? 'bg-secondary text-secondary-foreground' : 'text-muted-foreground hover:text-foreground')}>
                 {m.label}
               </button>
             ))}

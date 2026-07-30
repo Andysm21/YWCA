@@ -1,15 +1,21 @@
+import { notFound } from 'next/navigation';
 import { CampDetailContent } from '@/components/sections/camp-detail-content';
-import { allCamps } from '@/lib/camp-data';
+import { getCampBySlug, getOpenCamps } from '@/lib/queries/camps';
+
+export const revalidate = 300;
 
 export async function generateStaticParams() {
-  return allCamps.map((c) => ({ slug: c.slug }));
+  const camps = await getOpenCamps();
+  return camps.map((c) => ({ slug: c.slug }));
 }
 
 export async function generateMetadata({ params }: { params: { slug: string } }) {
-  const camp = allCamps.find((c) => c.slug === params.slug);
+  const camp = await getCampBySlug(params.slug);
   return { title: camp ? `${camp.name} — YWCA Camp` : 'Camp — YWCA Camp' };
 }
 
-export default function CampDetailPage({ params }: { params: { slug: string } }) {
-  return <CampDetailContent slug={params.slug} />;
+export default async function CampDetailPage({ params }: { params: { slug: string } }) {
+  const camp = await getCampBySlug(params.slug);
+  if (!camp) return notFound();
+  return <CampDetailContent camp={camp} />;
 }

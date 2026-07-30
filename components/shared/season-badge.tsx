@@ -8,7 +8,7 @@ export function SeasonBadge({
   season: Season;
   className?: string;
 }) {
-  const isOpen = season.open;
+  const isOpen = season.dbStatus === 'open';
   return (
     <span
       className={cn(
