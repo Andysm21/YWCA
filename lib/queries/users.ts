@@ -9,6 +9,8 @@ export type StaffUser = {
   role: 'admin' | 'super_admin';
   status: 'pending' | 'active' | 'inactive';
   created_at: string;
+  username: string | null;
+  recovery_email: string | null;
 };
 
 /**
@@ -22,7 +24,7 @@ export async function getStaffUsers(): Promise<StaffUser[]> {
 
   const { data, error } = await supabase
     .from('users')
-    .select('id, email, full_name, role, status, created_at')
+    .select('id, email, full_name, role, status, created_at, username, recovery_email')
     .order('created_at', { ascending: false });
   if (error) throw error;
 

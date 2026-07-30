@@ -6,7 +6,7 @@ import {
   Users, CalendarCheck, DollarSign, TrendingUp, Plus, Pencil, Trash2,
   Calendar, Tent, FileText, Settings, Download, ArrowRight, Check,
   Mail, MapPin, Megaphone, ChevronLeft, ChevronRight,
-  UserPlus, Loader2, ShieldCheck,
+  UserPlus, Loader2, ShieldCheck, KeyRound, Copy, AlertTriangle,
 } from 'lucide-react';
 import { StatCard } from '@/components/shared/stat-card';
 import { EmailQuotaWidget } from '@/components/portal/email-quota-widget';
@@ -753,12 +753,24 @@ function RegistrationsTab({
 /* ========== STAFF ========== */
 function StaffTab({ staffUsers, onConfirm }: { staffUsers: StaffUser[]; onConfirm: (s: { title: string; description: string; onConfirm: () => void }) => void }) {
   const router = useRouter();
+  const [creationMode, setCreationMode] = React.useState<'invite' | 'direct'>('invite');
   const [email, setEmail] = React.useState('');
   const [fullName, setFullName] = React.useState('');
   const [submitting, setSubmitting] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);
   const [success, setSuccess] = React.useState<string | null>(null);
   const [statusUpdatingId, setStatusUpdatingId] = React.useState<string | null>(null);
+
+  // Direct-creation form state
+  const [directFullName, setDirectFullName] = React.useState('');
+  const [directUsername, setDirectUsername] = React.useState('');
+  const [directRecoveryEmail, setDirectRecoveryEmail] = React.useState('');
+  const [directPassword, setDirectPassword] = React.useState('');
+  const [directSubmitting, setDirectSubmitting] = React.useState(false);
+  const [directError, setDirectError] = React.useState<string | null>(null);
+  // One-time reveal — the password only ever lives here, never persisted
+  // or refetched. Cleared the moment the Super Admin dismisses the panel.
+  const [createdCreds, setCreatedCreds] = React.useState<{ username: string; password: string } | null>(null);
 
   async function setStaffStatus(u: StaffUser, status: 'active' | 'inactive') {
     setStatusUpdatingId(u.id);
@@ -814,33 +826,158 @@ function StaffTab({ staffUsers, onConfirm }: { staffUsers: StaffUser[]; onConfir
     }
   }
 
+  async function handleDirectCreate(e: React.FormEvent) {
+    e.preventDefault();
+    setDirectSubmitting(true);
+    setDirectError(null);
+    try {
+      const res = await fetch('/api/portal/staff/create-direct', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          fullName: directFullName,
+          username: directUsername,
+          recoveryEmail: directRecoveryEmail,
+          password: directPassword,
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Failed to create account');
+      // Show the one-time reveal BEFORE clearing the password field — this
+      // is the only moment it will ever be visible again.
+      setCreatedCreds({ username: directUsername.trim().toLowerCase(), password: directPassword });
+      setDirectFullName('');
+      setDirectUsername('');
+      setDirectRecoveryEmail('');
+      setDirectPassword('');
+      router.refresh();
+    } catch (err) {
+      setDirectError(err instanceof Error ? err.message : 'Failed to create account');
+    } finally {
+      setDirectSubmitting(false);
+    }
+  }
+
   return (
     <div>
-      <div className="rounded-2xl border border-border/60 bg-card/50 p-6">
-        <div className="mb-4 flex items-center gap-2">
-          <UserPlus className="h-5 w-5 text-primary" />
-          <h3 className="font-display text-lg font-bold text-foreground">Invite Admin</h3>
+      {createdCreds && (
+        <div className="mb-6 rounded-2xl border border-emerald-500/30 bg-emerald-500/10 p-6">
+          <div className="mb-3 flex items-center gap-2">
+            <KeyRound className="h-5 w-5 text-emerald-400" />
+            <h3 className="font-display text-lg font-bold text-foreground">Account created — save these now</h3>
+          </div>
+          <div className="mb-3 flex items-start gap-2 rounded-lg border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-xs text-amber-300">
+            <AlertTriangle className="mt-0.5 h-3.5 w-3.5 shrink-0" />
+            This password is shown ONLY this one time and cannot be retrieved later. Relay it securely (WhatsApp, in person) then dismiss this panel.
+          </div>
+          <div className="grid gap-3 sm:grid-cols-2">
+            <div className="rounded-xl bg-background/60 p-3">
+              <p className="text-xs uppercase tracking-wide text-muted-foreground">Username</p>
+              <div className="mt-1 flex items-center justify-between gap-2">
+                <code className="text-sm font-semibold text-foreground">{createdCreds.username}</code>
+                <button type="button" onClick={() => navigator.clipboard.writeText(createdCreds.username)} className="text-muted-foreground hover:text-foreground">
+                  <Copy className="h-3.5 w-3.5" />
+                </button>
+              </div>
+            </div>
+            <div className="rounded-xl bg-background/60 p-3">
+              <p className="text-xs uppercase tracking-wide text-muted-foreground">Password</p>
+              <div className="mt-1 flex items-center justify-between gap-2">
+                <code className="text-sm font-semibold text-foreground">{createdCreds.password}</code>
+                <button type="button" onClick={() => navigator.clipboard.writeText(createdCreds.password)} className="text-muted-foreground hover:text-foreground">
+                  <Copy className="h-3.5 w-3.5" />
+                </button>
+              </div>
+            </div>
+          </div>
+          <Button variant="outline" size="sm" className="mt-4 rounded-full" onClick={() => setCreatedCreds(null)}>
+            I've saved this, dismiss
+          </Button>
         </div>
-        <p className="mb-4 text-sm text-muted-foreground">
-          Sends a Supabase Auth invite email (via Supabase's built-in email service) and creates the staff record with the <span className="font-semibold text-foreground">admin</span> role. There is no self-serve sign-up anywhere else in the app — this is the only way new staff accounts get created.
-        </p>
-        <form onSubmit={handleInvite} className="grid gap-4 sm:grid-cols-2">
-          <div className="space-y-2">
-            <Label htmlFor="staffFullName">Full name</Label>
-            <Input id="staffFullName" required value={fullName} onChange={(e) => setFullName(e.target.value)} className="rounded-xl bg-background/50" placeholder="Jane Doe" />
-          </div>
-          <div className="space-y-2">
-            <Label htmlFor="staffEmail">Email</Label>
-            <Input id="staffEmail" type="email" required value={email} onChange={(e) => setEmail(e.target.value)} className="rounded-xl bg-background/50" placeholder="jane@ywcacamp.org" />
-          </div>
-          {error && <p className="text-sm text-rose-400 sm:col-span-2">{error}</p>}
-          {success && <p className="text-sm text-emerald-400 sm:col-span-2">{success}</p>}
-          <div className="sm:col-span-2">
-            <Button type="submit" className="rounded-full glow-orange" disabled={submitting}>
-              {submitting ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Sending invite...</> : <><UserPlus className="mr-2 h-4 w-4" /> Invite Admin</>}
-            </Button>
-          </div>
-        </form>
+      )}
+
+      <div className="rounded-2xl border border-border/60 bg-card/50 p-6">
+        <div className="mb-4 flex gap-2">
+          <button
+            type="button"
+            onClick={() => setCreationMode('invite')}
+            className={cn('rounded-full px-4 py-1.5 text-sm font-semibold transition-colors',
+              creationMode === 'invite' ? 'bg-primary text-primary-foreground' : 'bg-muted/40 text-muted-foreground hover:text-foreground')}
+          >
+            Invite by Email
+          </button>
+          <button
+            type="button"
+            onClick={() => setCreationMode('direct')}
+            className={cn('rounded-full px-4 py-1.5 text-sm font-semibold transition-colors',
+              creationMode === 'direct' ? 'bg-primary text-primary-foreground' : 'bg-muted/40 text-muted-foreground hover:text-foreground')}
+          >
+            Create with Username
+          </button>
+        </div>
+
+        {creationMode === 'invite' ? (
+          <>
+            <div className="mb-4 flex items-center gap-2">
+              <UserPlus className="h-5 w-5 text-primary" />
+              <h3 className="font-display text-lg font-bold text-foreground">Invite Admin</h3>
+            </div>
+            <p className="mb-4 text-sm text-muted-foreground">
+              Sends a Supabase Auth invite email (via Supabase's built-in email service) and creates the staff record with the <span className="font-semibold text-foreground">admin</span> role.
+            </p>
+            <form onSubmit={handleInvite} className="grid gap-4 sm:grid-cols-2">
+              <div className="space-y-2">
+                <Label htmlFor="staffFullName">Full name</Label>
+                <Input id="staffFullName" required value={fullName} onChange={(e) => setFullName(e.target.value)} className="rounded-xl bg-background/50" placeholder="Jane Doe" />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="staffEmail">Email</Label>
+                <Input id="staffEmail" type="email" required value={email} onChange={(e) => setEmail(e.target.value)} className="rounded-xl bg-background/50" placeholder="jane@ywcacamp.org" />
+              </div>
+              {error && <p className="text-sm text-rose-400 sm:col-span-2">{error}</p>}
+              {success && <p className="text-sm text-emerald-400 sm:col-span-2">{success}</p>}
+              <div className="sm:col-span-2">
+                <Button type="submit" className="rounded-full glow-orange" disabled={submitting}>
+                  {submitting ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Sending invite...</> : <><UserPlus className="mr-2 h-4 w-4" /> Invite Admin</>}
+                </Button>
+              </div>
+            </form>
+          </>
+        ) : (
+          <>
+            <div className="mb-4 flex items-center gap-2">
+              <KeyRound className="h-5 w-5 text-primary" />
+              <h3 className="font-display text-lg font-bold text-foreground">Create Admin Directly</h3>
+            </div>
+            <p className="mb-4 text-sm text-muted-foreground">
+              No invite/acceptance step — the account is active immediately with the password you set here. The recovery email is used ONLY for password resets, never for login.
+            </p>
+            <form onSubmit={handleDirectCreate} className="grid gap-4 sm:grid-cols-2">
+              <div className="space-y-2">
+                <Label htmlFor="directFullName">Full name</Label>
+                <Input id="directFullName" required value={directFullName} onChange={(e) => setDirectFullName(e.target.value)} className="rounded-xl bg-background/50" placeholder="Jane Doe" />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="directUsername">Username</Label>
+                <Input id="directUsername" required value={directUsername} onChange={(e) => setDirectUsername(e.target.value)} className="rounded-xl bg-background/50" placeholder="jane_admin" pattern="[a-zA-Z0-9_]{3,30}" title="3-30 characters: letters, numbers, underscores only" />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="directRecoveryEmail">Recovery email</Label>
+                <Input id="directRecoveryEmail" type="email" required value={directRecoveryEmail} onChange={(e) => setDirectRecoveryEmail(e.target.value)} className="rounded-xl bg-background/50" placeholder="jane@personal-email.com" />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="directPassword">Password</Label>
+                <Input id="directPassword" type="text" required minLength={8} value={directPassword} onChange={(e) => setDirectPassword(e.target.value)} className="rounded-xl bg-background/50 font-mono" placeholder="At least 8 characters" />
+              </div>
+              {directError && <p className="text-sm text-rose-400 sm:col-span-2">{directError}</p>}
+              <div className="sm:col-span-2">
+                <Button type="submit" className="rounded-full glow-orange" disabled={directSubmitting}>
+                  {directSubmitting ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Creating...</> : <><KeyRound className="mr-2 h-4 w-4" /> Create Admin</>}
+                </Button>
+              </div>
+            </form>
+          </>
+        )}
       </div>
 
       <div className="mt-8">
@@ -849,18 +986,23 @@ function StaffTab({ staffUsers, onConfirm }: { staffUsers: StaffUser[]; onConfir
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b border-border/60">
-                {['Name', 'Email', 'Role', 'Status', 'Created', 'Actions'].map((h) => (
+                {['Name', 'Login ID', 'Recovery Email', 'Role', 'Status', 'Created', 'Actions'].map((h) => (
                   <th key={h} className="px-4 py-3 text-left font-semibold text-muted-foreground">{h}</th>
                 ))}
               </tr>
             </thead>
             <tbody>
               {staffUsers.length === 0 ? (
-                <tr><td colSpan={6} className="px-4 py-8 text-center text-muted-foreground">No staff accounts yet.</td></tr>
+                <tr><td colSpan={7} className="px-4 py-8 text-center text-muted-foreground">No staff accounts yet.</td></tr>
               ) : staffUsers.map((u) => (
                 <tr key={u.id} className="border-b border-border/40 transition-colors hover:bg-muted/30">
                   <td className="px-4 py-3 font-medium text-foreground">{u.full_name}</td>
-                  <td className="px-4 py-3 text-muted-foreground">{u.email}</td>
+                  <td className="px-4 py-3 text-muted-foreground">
+                    {u.username ? (
+                      <span className="inline-flex items-center gap-1"><KeyRound className="h-3 w-3 text-muted-foreground" />{u.username}</span>
+                    ) : u.email}
+                  </td>
+                  <td className="px-4 py-3 text-muted-foreground">{u.recovery_email ?? <span className="text-xs">—</span>}</td>
                   <td className="px-4 py-3">
                     <span className={cn('inline-flex items-center gap-1 rounded-full border px-2.5 py-0.5 text-xs font-semibold',
                       u.role === 'super_admin' ? 'border-emerald-500/20 bg-emerald-500/15 text-emerald-400' : 'border-sky-500/20 bg-sky-500/15 text-sky-400')}>

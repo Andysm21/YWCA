@@ -20,6 +20,15 @@ export async function middleware(request: NextRequest) {
 
   const isLoginRoute = pathname === '/portal/login';
   const isAcceptInviteRoute = pathname === '/portal/accept-invite';
+  const isPasswordResetRoute = pathname === '/portal/forgot-password' || pathname === '/portal/reset-password';
+
+  if (isPasswordResetRoute) {
+    // Same reasoning as accept-invite below: these must be reachable with
+    // no session (a locked-out user by definition doesn't have one), and
+    // reset-password's token lives in a query param the page itself
+    // validates against the DB — no auth decision belongs at this layer.
+    return response;
+  }
 
   if (isAcceptInviteRoute) {
     // Invite links carry the session token in the URL FRAGMENT

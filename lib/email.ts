@@ -427,3 +427,44 @@ ${paymentUrl}
 ${NO_REPLY_TEXT}`,
   });
 }
+
+type PasswordResetEmailParams = {
+  to: string;
+  resetUrl: string;
+};
+
+/**
+ * Only for username-based staff accounts — their Supabase Auth email is a
+ * synthetic `.invalid` address that can never receive mail, so Supabase's
+ * built-in password-reset email is useless here. This goes to the real
+ * `recovery_email` on file instead, via the app's own Gmail transporter.
+ */
+export async function sendPasswordResetEmail(params: PasswordResetEmailParams): Promise<SendResult> {
+  const bodyHtml = `
+    <p style="margin: 0 0 16px; color: ${BRAND.navy}; font-size: 15px; line-height: 1.6;">Hi,</p>
+    <p style="margin: 0 0 16px; color: ${BRAND.navy}; font-size: 15px; line-height: 1.6;">
+      A password reset was requested for your YWCA Camp staff portal account. Click below to set a new password — this link expires in 1 hour and can only be used once.
+    </p>
+    <table role="presentation" width="100%" style="margin: 20px 0; border-collapse: collapse;">
+      <tr><td style="padding: 0;">
+        <a href="${params.resetUrl}" style="display: inline-block; padding: 12px 24px; background: ${BRAND.orange}; color: #ffffff; font-size: 15px; font-weight: 600; text-decoration: none; border-radius: 8px;">Reset password</a>
+      </td></tr>
+    </table>
+    <p style="margin: 0; color: #8a8478; font-size: 13px; line-height: 1.6;">If you didn't request this, you can safely ignore this email — your password won't change.</p>
+  `;
+
+  return sendMailSafely({
+    from: `"YWCA Camp" <${process.env.GMAIL_USER}>`,
+    to: params.to,
+    subject: 'Reset your YWCA Camp staff portal password',
+    html: wrapEmailHtml(bodyHtml),
+    text: `Hi,
+
+A password reset was requested for your YWCA Camp staff portal account. Use the link below to set a new password — it expires in 1 hour and can only be used once.
+
+${params.resetUrl}
+
+If you didn't request this, you can safely ignore this email — your password won't change.
+${NO_REPLY_TEXT}`,
+  });
+}

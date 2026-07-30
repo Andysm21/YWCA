@@ -2,7 +2,7 @@
 
 import * as React from 'react';
 import { useRouter } from 'next/navigation';
-import { Tent, Lock, Mail, ArrowRight, Loader2, AlertCircle } from 'lucide-react';
+import { Tent, Lock, User, ArrowRight, Loader2, AlertCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -11,7 +11,7 @@ import { resolveStaffDashboardPath } from '@/lib/auth/get-staff-role';
 
 export function PortalLoginContent() {
   const router = useRouter();
-  const [email, setEmail] = React.useState('');
+  const [identifier, setIdentifier] = React.useState('');
   const [password, setPassword] = React.useState('');
   const [error, setError] = React.useState<string | null>(null);
   const [loading, setLoading] = React.useState(false);
@@ -24,12 +24,12 @@ export function PortalLoginContent() {
     const res = await fetch('/api/portal/login', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ email, password }),
+      body: JSON.stringify({ identifier, password }),
     });
 
     if (!res.ok) {
       const body = await res.json().catch(() => null);
-      setError(body?.error ?? 'Invalid credentials. Please check your email and password.');
+      setError(body?.error ?? 'Invalid credentials. Please check your username/email and password.');
       setLoading(false);
       return;
     }
@@ -89,16 +89,16 @@ export function PortalLoginContent() {
           )}
 
           <div className="space-y-2">
-            <Label htmlFor="email">Email</Label>
+            <Label htmlFor="identifier">Username or email</Label>
             <div className="relative">
-              <Mail className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+              <User className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
               <Input
-                id="email"
-                type="email"
-                placeholder="you@ywcacamp.org"
+                id="identifier"
+                type="text"
+                placeholder="you@ywcacamp.org or username"
                 required
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
+                value={identifier}
+                onChange={(e) => setIdentifier(e.target.value)}
                 className="rounded-xl bg-background/50 pl-10"
               />
             </div>
@@ -127,6 +127,14 @@ export function PortalLoginContent() {
               <>Sign in <ArrowRight className="ml-2 h-4 w-4" /></>
             )}
           </Button>
+
+          <p className="text-center text-xs text-muted-foreground">
+            Forgot your password?{' '}
+            <a href="/portal/forgot-password" className="font-semibold text-primary hover:underline">
+              Reset it
+            </a>{' '}
+            (username accounts only — invited/email accounts should contact a Super Admin).
+          </p>
         </form>
       </div>
     </div>
