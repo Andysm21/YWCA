@@ -2,7 +2,7 @@ import { notFound } from 'next/navigation';
 import { CampDetailContent } from '@/components/sections/camp-detail-content';
 import { getCampBySlug, getOpenCamps } from '@/lib/queries/camps';
 
-export const revalidate = 300;
+export const revalidate = 30;
 
 export async function generateStaticParams() {
   const camps = await getOpenCamps();

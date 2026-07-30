@@ -1,7 +1,7 @@
 import { HomeHero, HomeSeasonExplorer, HomeCalendar, HomeHighlights, HomeGalleryTeaser } from '@/components/sections/home';
 import { getOpenSeasonsWithCamps } from '@/lib/queries/camps';
 
-export const revalidate = 300;
+export const revalidate = 30;
 
 export default async function Home() {
   const seasons = await getOpenSeasonsWithCamps();
