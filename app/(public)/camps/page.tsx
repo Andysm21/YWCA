@@ -11,7 +11,7 @@ export default async function CampsPage() {
     <>
       <PageHeader
         eyebrow="Explore the camps"
-        title={<>Two seasons, <span className="gradient-text-mix">ten camps</span></>}
+        title={<>Find your <span className="gradient-text-mix">camp</span></>}
         subtitle="Filter by season, age group, or month to find the perfect camp experience."
       />
       <CampsContent camps={camps} />
