@@ -14,7 +14,7 @@ const TOKEN_TTL_MS = 60 * 60 * 1000; // 1 hour
  * the username exists, has a recovery email, or even is a username-based
  * account at all — the caller can never distinguish these cases.
  */
-const GENERIC_RESPONSE = NextResponse.json({
+const genericResponse = () => NextResponse.json({
   message: 'If that username exists and has a recovery email on file, a reset link has been sent to it.',
 });
 
@@ -27,7 +27,7 @@ export async function POST(request: Request) {
   const body = await request.json().catch(() => null);
   const usernameRaw = typeof body?.username === 'string' ? body.username.trim() : '';
   if (!usernameRaw) {
-    return GENERIC_RESPONSE;
+    return genericResponse();
   }
 
   const username = normalizeUsername(usernameRaw);
@@ -56,5 +56,5 @@ export async function POST(request: Request) {
     }
   }
 
-  return GENERIC_RESPONSE;
+  return genericResponse();
 }

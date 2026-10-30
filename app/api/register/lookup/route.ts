@@ -30,7 +30,10 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: 'Too many attempts. Please try again later or contact support.' }, { status: 429 });
   }
 
-  const body = await request.json();
+  const body = await request.json().catch(() => null);
+  if (!body || typeof body !== 'object') {
+    return NextResponse.json({ error: 'Invalid request.' }, { status: 400 });
+  }
   const campSlug = typeof body.campSlug === 'string' ? body.campSlug.trim() : '';
   const camperName = typeof body.camperName === 'string' ? body.camperName.trim() : '';
   const parentMobile = typeof body.parentMobile === 'string' ? body.parentMobile.trim() : '';
@@ -53,8 +56,11 @@ export async function POST(request: Request) {
     .from('registrations')
     .select('registration_number, status, camper_name, waitlist_position')
     .eq('camp_id', camp.id)
-    .ilike('camper_name', camperName)
+    // Escape LIKE wildcards — ilike is used only for case-insensitivity, a
+    // literal '%' or '_' in the input must not widen the match.
+    .ilike('camper_name', camperName.replace(/[\\%_]/g, '\\$&'))
     .eq('parent_mobile', parentMobile)
+    .limit(1)
     .maybeSingle();
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
 

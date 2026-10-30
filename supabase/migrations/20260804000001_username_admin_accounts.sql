@@ -21,7 +21,7 @@ Supabase's built-in reset email). No RLS policies at all — same
 deny-all-by-default pattern as `registration_number_counters`: every access
 goes through the service-role client from the forgot-password/reset-password
 API routes, never through a user session.
-*/. 
+*/
 
 ALTER TABLE users ADD COLUMN IF NOT EXISTS username text UNIQUE;
 ALTER TABLE users ADD COLUMN IF NOT EXISTS recovery_email text;

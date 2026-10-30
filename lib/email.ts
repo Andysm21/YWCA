@@ -84,6 +84,16 @@ async function sendMailSafely(mail: Parameters<ReturnType<typeof getTransporter>
   }
 }
 
+/** Guest-supplied values (camper name, etc.) are interpolated into HTML emails sent from the org's own Gmail account — escape them or a crafted name becomes a phishing link in a trusted sender's email. */
+function escapeHtml(value: string): string {
+  return String(value)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
+
 const BRAND = {
   orange: '#e8622c',
   navy: '#1f2937',
@@ -185,7 +195,7 @@ export async function sendPendingPaymentEmail(params: PendingPaymentEmailParams)
   const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? '';
   const paymentUrl = `${siteUrl}/register/${params.campSlug}/payment?code=${encodeURIComponent(params.registrationNumber)}`;
   const priceLabel = params.priceEgp.toLocaleString();
-  const meetingPointsHtml = params.meetingPoints.map((point) => `<li>${point}</li>`).join('');
+  const meetingPointsHtml = params.meetingPoints.map((point) => `<li>${escapeHtml(point)}</li>`).join('');
   const meetingPointsText = params.meetingPoints.map((point) => `- ${point}`).join('\n');
 
   const html = `<!DOCTYPE html>
@@ -211,8 +221,8 @@ export async function sendPendingPaymentEmail(params: PendingPaymentEmailParams)
 
 <tr>
 <td style="padding:0 28px 24px;">
-<p style="margin:0 0 16px; font-size:16px; color:#1a1a2e; line-height:1.6;">Hello <strong>${params.camperName}</strong>,</p>
-<p style="margin:0; font-size:16px; color:#1a1a2e; line-height:1.6;">We are thrilled to confirm your registration for <strong>${params.campName}</strong>. Here's everything you need:</p>
+<p style="margin:0 0 16px; font-size:16px; color:#1a1a2e; line-height:1.6;">Hello <strong>${escapeHtml(params.camperName)}</strong>,</p>
+<p style="margin:0; font-size:16px; color:#1a1a2e; line-height:1.6;">We are thrilled to confirm your registration for <strong>${escapeHtml(params.campName)}</strong>. Here's everything you need:</p>
 </td>
 </tr>
 
@@ -223,19 +233,19 @@ export async function sendPendingPaymentEmail(params: PendingPaymentEmailParams)
 <table role="presentation" width="100%" cellpadding="0" cellspacing="0">
 <tr>
 <td style="padding:6px 0; font-size:13px; color:#8a6a4a; width:40%;">Registration No.</td>
-<td style="padding:6px 0; font-size:15px; color:#B34A17; font-weight:800; text-align:right;">${params.registrationNumber}</td>
+<td style="padding:6px 0; font-size:15px; color:#B34A17; font-weight:800; text-align:right;">${escapeHtml(params.registrationNumber)}</td>
 </tr>
 <tr>
 <td style="padding:6px 0; font-size:13px; color:#8a6a4a;">Camp</td>
-<td style="padding:6px 0; font-size:15px; color:#1a1a2e; font-weight:700; text-align:right;">${params.campName}</td>
+<td style="padding:6px 0; font-size:15px; color:#1a1a2e; font-weight:700; text-align:right;">${escapeHtml(params.campName)}</td>
 </tr>
 <tr>
 <td style="padding:6px 0; font-size:13px; color:#8a6a4a;">Camper</td>
-<td style="padding:6px 0; font-size:15px; color:#1a1a2e; font-weight:700; text-align:right;">${params.camperName}</td>
+<td style="padding:6px 0; font-size:15px; color:#1a1a2e; font-weight:700; text-align:right;">${escapeHtml(params.camperName)}</td>
 </tr>
 <tr>
 <td style="padding:6px 0; font-size:13px; color:#8a6a4a;">Mobile</td>
-<td style="padding:6px 0; font-size:15px; color:#1a1a2e; font-weight:700; text-align:right;">${params.mobilePhone}</td>
+<td style="padding:6px 0; font-size:15px; color:#1a1a2e; font-weight:700; text-align:right;">${escapeHtml(params.mobilePhone)}</td>
 </tr>
 <tr>
 <td style="padding:6px 0; font-size:13px; color:#8a6a4a;">Camp Fee</td>
@@ -255,7 +265,7 @@ export async function sendPendingPaymentEmail(params: PendingPaymentEmailParams)
 
 <tr>
 <td align="center" style="padding:24px 28px;">
-<a href="${paymentUrl}" style="display:inline-block; background-color:#1a6b5c; color:#ffffff; font-size:16px; font-weight:bold; text-decoration:none; padding:15px 40px; border-radius:100px;">Click to Pay →</a>
+<a href="${escapeHtml(paymentUrl)}" style="display:inline-block; background-color:#1a6b5c; color:#ffffff; font-size:16px; font-weight:bold; text-decoration:none; padding:15px 40px; border-radius:100px;">Click to Pay →</a>
 </td>
 </tr>
 
@@ -348,12 +358,12 @@ export async function sendWaitlistEmail(params: WaitlistEmailParams): Promise<Se
   const bodyHtml = `
     <p style="margin: 0 0 16px; color: ${BRAND.navy}; font-size: 15px; line-height: 1.6;">Hi,</p>
     <p style="margin: 0 0 16px; color: ${BRAND.navy}; font-size: 15px; line-height: 1.6;">
-      <strong>${params.campName}</strong> is currently full. We've added <strong>${params.camperName}</strong> to the waitlist at position <strong>${params.waitlistPosition}</strong>.
+      <strong>${escapeHtml(params.campName)}</strong> is currently full. We've added <strong>${escapeHtml(params.camperName)}</strong> to the waitlist at position <strong>${params.waitlistPosition}</strong>.
     </p>
     <table role="presentation" width="100%" style="margin: 20px 0; border-collapse: collapse; background: #f5f0e8; border-radius: 10px;">
       <tr><td style="padding: 16px 20px;">
         <p style="margin: 0 0 6px; color: #8a8478; font-size: 12px; text-transform: uppercase; letter-spacing: 0.05em;">Registration number</p>
-        <p style="margin: 0; color: ${BRAND.orange}; font-size: 20px; font-weight: 700;">${params.registrationNumber}</p>
+        <p style="margin: 0; color: ${BRAND.orange}; font-size: 20px; font-weight: 700;">${escapeHtml(params.registrationNumber)}</p>
       </td></tr>
     </table>
     <p style="margin: 0; color: ${BRAND.navy}; font-size: 15px; line-height: 1.6;">We'll email you if a spot opens up — no payment is needed right now.</p>
@@ -392,12 +402,12 @@ export async function sendWaitlistPromotedEmail(params: WaitlistPromotedEmailPar
   const bodyHtml = `
     <p style="margin: 0 0 16px; color: ${BRAND.navy}; font-size: 15px; line-height: 1.6;">Hi,</p>
     <p style="margin: 0 0 16px; color: ${BRAND.navy}; font-size: 15px; line-height: 1.6;">
-      Good news — a spot opened up in <strong>${params.campName}</strong> and <strong>${params.camperName}</strong> is off the waitlist!
+      Good news — a spot opened up in <strong>${escapeHtml(params.campName)}</strong> and <strong>${escapeHtml(params.camperName)}</strong> is off the waitlist!
     </p>
     <table role="presentation" width="100%" style="margin: 20px 0; border-collapse: collapse; background: #f5f0e8; border-radius: 10px;">
       <tr><td style="padding: 16px 20px;">
         <p style="margin: 0 0 6px; color: #8a8478; font-size: 12px; text-transform: uppercase; letter-spacing: 0.05em;">Registration number</p>
-        <p style="margin: 0 0 14px; color: ${BRAND.orange}; font-size: 20px; font-weight: 700;">${params.registrationNumber}</p>
+        <p style="margin: 0 0 14px; color: ${BRAND.orange}; font-size: 20px; font-weight: 700;">${escapeHtml(params.registrationNumber)}</p>
         <p style="margin: 0 0 6px; color: #8a8478; font-size: 12px; text-transform: uppercase; letter-spacing: 0.05em;">Total due</p>
         <p style="margin: 0; color: ${BRAND.navy}; font-size: 18px; font-weight: 700;">EGP ${params.priceEgp.toLocaleString()}</p>
       </td></tr>
@@ -405,7 +415,7 @@ export async function sendWaitlistPromotedEmail(params: WaitlistPromotedEmailPar
     <p style="margin: 0 0 20px; color: ${BRAND.navy}; font-size: 15px; line-height: 1.6;">Complete payment soon to secure the spot:</p>
     <table role="presentation" style="margin: 0 0 16px; border-collapse: collapse;">
       <tr><td style="background: ${BRAND.orange}; border-radius: 999px;">
-        <a href="${paymentUrl}" style="display: inline-block; padding: 12px 28px; color: #ffffff; font-weight: 700; font-size: 14px; text-decoration: none;">Complete payment &amp; upload documents</a>
+        <a href="${escapeHtml(paymentUrl)}" style="display: inline-block; padding: 12px 28px; color: #ffffff; font-weight: 700; font-size: 14px; text-decoration: none;">Complete payment &amp; upload documents</a>
       </td></tr>
     </table>
   `;
@@ -447,7 +457,7 @@ export async function sendPasswordResetEmail(params: PasswordResetEmailParams): 
     </p>
     <table role="presentation" width="100%" style="margin: 20px 0; border-collapse: collapse;">
       <tr><td style="padding: 0;">
-        <a href="${params.resetUrl}" style="display: inline-block; padding: 12px 24px; background: ${BRAND.orange}; color: #ffffff; font-size: 15px; font-weight: 600; text-decoration: none; border-radius: 8px;">Reset password</a>
+        <a href="${escapeHtml(params.resetUrl)}" style="display: inline-block; padding: 12px 24px; background: ${BRAND.orange}; color: #ffffff; font-size: 15px; font-weight: 600; text-decoration: none; border-radius: 8px;">Reset password</a>
       </td></tr>
     </table>
     <p style="margin: 0; color: #8a8478; font-size: 13px; line-height: 1.6;">If you didn't request this, you can safely ignore this email — your password won't change.</p>
