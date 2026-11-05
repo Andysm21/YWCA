@@ -2,7 +2,7 @@
 
 import * as React from 'react';
 import Link from 'next/link';
-import { ArrowLeft, ArrowRight, Check, User, Heart, PartyPopper, Loader2 } from 'lucide-react';
+import { ArrowLeft, ArrowRight, Check, User, Heart, PartyPopper, Loader2, ScrollText, ListChecks, Mail, CreditCard, Upload, AlertTriangle, Ban } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -36,8 +36,26 @@ type Step2 = {
 const emptyStep1: Step1 = { camperName: '', dateOfBirth: '', mobilePhone: '', email: '', school: '', academicYear: '', tshirtSize: '', firstTimeCamper: false };
 const emptyStep2: Step2 = { parentName: '', parentMobile: '', alternateMobile: '', parentEmail: '', emergencyContactName: '', emergencyContactNumber: '', medicalCondition: '', additionalInfo: '' };
 
+const CAMP_RULES = [
+  'No coming late or leaving early.',
+  'No bullying and cursing.',
+  'Parents cannot visit.',
+  'Parents cannot call campers directly.',
+  'Respect personal privacy and boundaries at all times. Private parts must never be touched, exposed, or discussed inappropriately by anyone.',
+  'No card games, board games, electronics of any kind (mobiles, smart watches, laptops, tablets, MP3 players, gaming consoles, etc.).',
+  'No jewelry or expensive accessories.',
+];
+
+const REGISTRATION_STEPS = [
+  { icon: User, title: 'Fill in the registration form', body: 'Complete the camper and guardian details on the next pages and submit the form.' },
+  { icon: Mail, title: 'Check your email', body: 'After you submit, we email the parent/guardian a message with your registration number and a personal payment link.' },
+  { icon: CreditCard, title: 'Pay the full amount', body: 'Use the link in that email and pay the full camp fee. Partial payments do not secure a spot.' },
+  { icon: Upload, title: 'Upload your proof of payment', body: 'Upload a screenshot of the payment through the same link. Our team then reviews it and confirms your registration.' },
+];
+
 export function RegisterContent({ camp }: { camp: Camp }) {
-  const [step, setStep] = React.useState<1 | 2 | 3>(1);
+  const [step, setStep] = React.useState<1 | 2 | 3 | 4 | 5>(1);
+  const [rulesAccepted, setRulesAccepted] = React.useState(false);
   const [submitting, setSubmitting] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);
   const [step1, setStep1] = React.useState<Step1>(emptyStep1);
@@ -61,7 +79,7 @@ export function RegisterContent({ camp }: { camp: Camp }) {
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || 'Something went wrong');
       setResult(data.registration);
-      setStep(3);
+      setStep(5);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Something went wrong submitting your registration. Please try again.');
     } finally {
@@ -72,7 +90,7 @@ export function RegisterContent({ camp }: { camp: Camp }) {
   return (
     <div className="mx-auto max-w-3xl px-6 py-16 lg:px-8">
       <StepProgress
-        steps={[{ label: 'Camper info' }, { label: 'Guardian & emergency' }, { label: 'Confirm' }]}
+        steps={[{ label: 'Camp rules' }, { label: 'How it works' }, { label: 'Camper info' }, { label: 'Guardian' }, { label: 'Confirm' }]}
         current={step}
       />
 
@@ -86,7 +104,70 @@ export function RegisterContent({ camp }: { camp: Camp }) {
         </div>
 
         {step === 1 && (
-          <form className="animate-fade-up space-y-5" onSubmit={(e) => { e.preventDefault(); if (step1Valid) setStep(2); }}>
+          <div className="animate-fade-up space-y-5">
+            <div className="flex items-center gap-2">
+              <div className="flex h-8 w-8 items-center justify-center rounded-full bg-primary/12 text-primary"><ScrollText className="h-4 w-4" /></div>
+              <h2 className="font-display text-xl font-bold text-foreground">The Camp Rules</h2>
+            </div>
+            <p className="text-sm text-muted-foreground">Please read the rules carefully. They apply to every camper at every YWCA Camp session.</p>
+            <div className="rounded-xl border border-border/60 bg-background/40 p-5">
+              <p className="mb-3 flex items-center gap-2 font-display text-base font-bold text-foreground"><Ban className="h-4 w-4 text-rose-400" /> Don&apos;ts</p>
+              <ul className="list-disc space-y-2 pl-5 text-sm text-foreground/90">
+                {CAMP_RULES.map((rule) => <li key={rule}>{rule}</li>)}
+              </ul>
+            </div>
+            <label className="flex cursor-pointer items-start gap-3 rounded-xl border border-border/60 bg-background/20 p-4 text-sm text-foreground">
+              <Checkbox className="mt-0.5" checked={rulesAccepted} onCheckedChange={(v) => setRulesAccepted(v === true)} />
+              <span>I have read the camp rules and I agree to them.</span>
+            </label>
+            <div className="flex justify-end pt-2">
+              <Button type="button" size="lg" className="rounded-full glow-orange" disabled={!rulesAccepted} onClick={() => setStep(2)}>
+                Continue <ArrowRight className="ml-2 h-4 w-4" />
+              </Button>
+            </div>
+          </div>
+        )}
+
+        {step === 2 && (
+          <div className="animate-fade-up space-y-5">
+            <div className="flex items-center gap-2">
+              <div className="flex h-8 w-8 items-center justify-center rounded-full bg-primary/12 text-primary"><ListChecks className="h-4 w-4" /></div>
+              <h2 className="font-display text-xl font-bold text-foreground">Registration instructions</h2>
+            </div>
+            <div className="flex gap-3 rounded-xl border border-amber-500/40 bg-amber-500/10 p-4 text-sm text-foreground">
+              <AlertTriangle className="mt-0.5 h-5 w-5 shrink-0 text-amber-500" />
+              <p>
+                <span className="font-semibold">Filling in this form does not secure a spot.</span> Your child is only registered, and a place is only guaranteed,
+                once you complete <span className="font-semibold">all</span> of the steps below, in this order.
+              </p>
+            </div>
+            <ol className="space-y-3">
+              {REGISTRATION_STEPS.map((s, i) => (
+                <li key={s.title} className="flex gap-4 rounded-xl border border-border/60 bg-background/40 p-4">
+                  <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-primary/12 text-primary"><s.icon className="h-4 w-4" /></div>
+                  <div>
+                    <p className="font-semibold text-foreground">{i + 1}. {s.title}</p>
+                    <p className="mt-0.5 text-sm text-muted-foreground">{s.body}</p>
+                  </div>
+                </li>
+              ))}
+            </ol>
+            <p className="rounded-xl border border-rose-500/30 bg-rose-500/10 p-4 text-sm text-foreground">
+              If these steps are not completed in this order, the camper will <span className="font-semibold">not</span> be registered and a spot is <span className="font-semibold">not guaranteed</span>.
+            </p>
+            <div className="flex justify-between pt-2">
+              <Button type="button" variant="ghost" className="rounded-full" onClick={() => setStep(1)}>
+                <ArrowLeft className="mr-2 h-4 w-4" /> Back
+              </Button>
+              <Button type="button" size="lg" className="rounded-full glow-orange" onClick={() => setStep(3)}>
+                Start the registration form <ArrowRight className="ml-2 h-4 w-4" />
+              </Button>
+            </div>
+          </div>
+        )}
+
+        {step === 3 && (
+          <form className="animate-fade-up space-y-5" onSubmit={(e) => { e.preventDefault(); if (step1Valid) setStep(4); }}>
             <div className="flex items-center gap-2">
               <div className="flex h-8 w-8 items-center justify-center rounded-full bg-primary/12 text-primary"><User className="h-4 w-4" /></div>
               <h2 className="font-display text-xl font-bold text-foreground">Camper information</h2>
@@ -127,15 +208,18 @@ export function RegisterContent({ camp }: { camp: Camp }) {
               <Checkbox checked={step1.firstTimeCamper} onCheckedChange={(v) => setStep1({ ...step1, firstTimeCamper: v === true })} />
               This is the camper's first time at YWCA Camp
             </label>
-            <div className="flex justify-end pt-2">
+            <div className="flex justify-between pt-2">
+              <Button type="button" variant="ghost" className="rounded-full" onClick={() => setStep(2)}>
+                <ArrowLeft className="mr-2 h-4 w-4" /> Back
+              </Button>
               <Button type="submit" size="lg" className="rounded-full glow-orange" disabled={!step1Valid}>
-                Continue to Step 2 <ArrowRight className="ml-2 h-4 w-4" />
+                Continue <ArrowRight className="ml-2 h-4 w-4" />
               </Button>
             </div>
           </form>
         )}
 
-        {step === 2 && (
+        {step === 4 && (
           <form className="animate-fade-up space-y-5" onSubmit={(e) => { e.preventDefault(); if (step2Valid) handleSubmit(); }}>
             <div className="flex items-center gap-2">
               <div className="flex h-8 w-8 items-center justify-center rounded-full bg-primary/12 text-primary"><Heart className="h-4 w-4" /></div>
@@ -179,11 +263,11 @@ export function RegisterContent({ camp }: { camp: Camp }) {
               <Input id="additionalInfo" placeholder="Optional" className="rounded-xl bg-background/50" value={step2.additionalInfo} onChange={(e) => setStep2({ ...step2, additionalInfo: e.target.value })} />
             </div>
             <div className="rounded-xl border border-dashed border-border/60 bg-background/20 p-4 text-center">
-              <p className="text-sm text-muted-foreground">Payment details will be sent after Step 1 review. Total: <span className="font-semibold text-foreground">EGP {formatPrice(camp.price)}</span></p>
+              <p className="text-sm text-muted-foreground">Payment details are sent by email after you submit this form. Total: <span className="font-semibold text-foreground">EGP {formatPrice(camp.price)}</span></p>
             </div>
             {error && <p className="text-sm text-rose-400">{error}</p>}
             <div className="flex justify-between pt-2">
-              <Button type="button" variant="ghost" className="rounded-full" onClick={() => setStep(1)}>
+              <Button type="button" variant="ghost" className="rounded-full" onClick={() => setStep(3)}>
                 <ArrowLeft className="mr-2 h-4 w-4" /> Back
               </Button>
               <Button type="submit" size="lg" className="rounded-full glow-orange" disabled={!step2Valid || submitting}>
@@ -193,7 +277,7 @@ export function RegisterContent({ camp }: { camp: Camp }) {
           </form>
         )}
 
-        {step === 3 && result && (
+        {step === 5 && result && (
           <div className="animate-fade-up text-center">
             <div className="mx-auto mb-6 flex h-20 w-20 items-center justify-center rounded-full bg-emerald-500/15 text-emerald-400">
               <PartyPopper className="h-10 w-10" />

@@ -10,22 +10,15 @@ const SIZES = {
 
 export type LogoSize = keyof typeof SIZES;
 
-// Only one asset exists today (public/logo.png) — it has a dark navy
-// wordmark baked in, which reads fine on light/neutral backgrounds but can
-// lose contrast on very dark ones. `variant` is scaffolded for a future
-// inverted/light asset (public/logo-light.png) if one gets provided; until
-// then both variants render the same file. Flagging this rather than
-// pretending an inverted asset exists.
+// Both assets have transparent backgrounds. logo.png has the dark navy
+// wordmark (for light mode); logo-light.png is the same artwork with the
+// wordmark recoloured cream (for dark mode). Swapped with the `dark:` class
+// variant, so it follows the site's theme with no client JS.
+// `variant` is kept for API compatibility with existing callers.
 export type LogoVariant = 'default' | 'inverted';
-
-const VARIANT_SRC: Record<LogoVariant, string> = {
-  default: '/logo.png',
-  inverted: '/logo.png', // TODO: swap once a light/inverted asset is provided
-};
 
 export function Logo({
   size = 'md',
-  variant = 'default',
   className,
   priority = false,
 }: {
@@ -38,10 +31,19 @@ export function Logo({
   return (
     <div className={cn('relative shrink-0', className)} style={{ width: px, height: px }}>
       <Image
-        src={VARIANT_SRC[variant]}
+        src="/logo.png"
         alt="YWCA Camp Egypt"
         fill
-        className="object-contain"
+        className="object-contain dark:hidden"
+        priority={priority}
+        sizes={`${px}px`}
+      />
+      <Image
+        src="/logo-light.png"
+        alt=""
+        aria-hidden
+        fill
+        className="hidden object-contain dark:block"
         priority={priority}
         sizes={`${px}px`}
       />

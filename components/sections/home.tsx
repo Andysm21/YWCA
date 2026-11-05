@@ -9,6 +9,7 @@ import { SeasonTabs } from '@/components/shared/season-tabs';
 import { GalleryMasonry } from '@/components/shared/gallery-masonry';
 import { Reveal } from '@/components/shared/reveal';
 import type { Season } from '@/lib/camp-data';
+import type { GalleryImageRow } from '@/lib/queries/gallery';
 
 const marqueeItems = [
   'Beach Olympics', 'Campfire Nights', 'Leadership Labs', 'Desert Treks',
@@ -147,7 +148,7 @@ export function HomeHighlights() {
   );
 }
 
-export function HomeGalleryTeaser() {
+export function HomeGalleryTeaser({ images }: { images: GalleryImageRow[] }) {
   return (
     <section className="relative py-20 sm:py-24">
       <div className="mx-auto max-w-7xl px-6 lg:px-8">
@@ -160,7 +161,7 @@ export function HomeGalleryTeaser() {
             <Link href="/gallery">View Full Gallery<ArrowRight className="ml-1.5 h-4 w-4" /></Link>
           </Button>
         </Reveal>
-        <Reveal delay={120} className="mt-10"><GalleryMasonry /></Reveal>
+        <Reveal delay={120} className="mt-10"><GalleryMasonry images={images} limit={8} /></Reveal>
       </div>
     </section>
   );

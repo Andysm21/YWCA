@@ -212,6 +212,25 @@ export function NewsSection({
 }
 
 /* ========== GALLERY ========== */
+// Downscale to max 1920px JPEG so uploads stay well under the serverless
+// request-size limit and the public gallery loads fast. PNG/WebP are
+// re-encoded as JPEG; falls back to the original file if decoding fails.
+async function resizeImage(file: File, maxDim = 1920, quality = 0.85): Promise<File> {
+  try {
+    const bitmap = await createImageBitmap(file);
+    const scale = Math.min(1, maxDim / Math.max(bitmap.width, bitmap.height));
+    const canvas = document.createElement('canvas');
+    canvas.width = Math.round(bitmap.width * scale);
+    canvas.height = Math.round(bitmap.height * scale);
+    canvas.getContext('2d')!.drawImage(bitmap, 0, 0, canvas.width, canvas.height);
+    const blob = await new Promise<Blob | null>((resolve) => canvas.toBlob(resolve, 'image/jpeg', quality));
+    if (!blob) return file;
+    return new File([blob], file.name.replace(/\.[^.]+$/, '') + '.jpg', { type: 'image/jpeg' });
+  } catch {
+    return file;
+  }
+}
+
 export function GallerySection({
   galleryImages, totalCount, page, basePath, seasons, camps, onConfirm,
 }: {
@@ -225,7 +244,9 @@ export function GallerySection({
 }) {
   const router = useRouter();
   const [showAdd, setShowAdd] = React.useState(false);
-  const [imageUrl, setImageUrl] = React.useState('');
+  const [files, setFiles] = React.useState<File[]>([]);
+  const [progress, setProgress] = React.useState<string | null>(null);
+  const fileInputRef = React.useRef<HTMLInputElement>(null);
   const [caption, setCaption] = React.useState('');
   const [campId, setCampId] = React.useState('');
   const [seasonId, setSeasonId] = React.useState('');
@@ -244,24 +265,38 @@ export function GallerySection({
   async function handleAdd(e: React.FormEvent) {
     e.preventDefault();
     setError(null);
-    if (!imageUrl.trim() || !/^https?:\/\//.test(imageUrl.trim())) {
-      setError('A valid image URL (http/https) is required.');
+    if (files.length === 0) {
+      setError('Choose at least one photo.');
       return;
     }
     setSubmitting(true);
+    const failures: string[] = [];
     try {
-      const res = await fetch('/api/portal/gallery', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ image_url: imageUrl, caption, camp_id: campId || null, season_id: seasonId || null }),
-      });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || 'Failed to add image');
-      setImageUrl(''); setCaption(''); setCampId(''); setSeasonId(''); setShowAdd(false);
-      router.refresh();
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to add image');
+      for (let i = 0; i < files.length; i++) {
+        setProgress(`Uploading ${i + 1} of ${files.length}...`);
+        try {
+          const resized = await resizeImage(files[i]);
+          const body = new FormData();
+          body.append('file', resized);
+          body.append('caption', caption);
+          body.append('camp_id', campId);
+          body.append('season_id', seasonId);
+          const res = await fetch('/api/portal/gallery/upload', { method: 'POST', body });
+          const data = await res.json().catch(() => ({}));
+          if (!res.ok) throw new Error(data.error || 'Upload failed');
+        } catch (err) {
+          failures.push(`${files[i].name}: ${err instanceof Error ? err.message : 'Upload failed'}`);
+        }
+      }
+      if (failures.length < files.length) router.refresh();
+      if (failures.length === 0) {
+        setFiles([]); setCaption(''); setCampId(''); setSeasonId(''); setShowAdd(false);
+        if (fileInputRef.current) fileInputRef.current.value = '';
+      } else {
+        setError(failures.join(' • '));
+      }
     } finally {
+      setProgress(null);
       setSubmitting(false);
     }
   }
@@ -284,14 +319,25 @@ export function GallerySection({
     <div>
       <div className="mb-4 flex justify-end">
         <Button size="sm" className="rounded-full glow-orange" onClick={() => setShowAdd((v) => !v)}>
-          <Plus className="mr-1.5 h-4 w-4" /> Add photo
+          <Plus className="mr-1.5 h-4 w-4" /> Upload photos
         </Button>
       </div>
 
       {showAdd && (
         <form onSubmit={handleAdd} className="mb-6 grid gap-4 rounded-2xl border border-border/60 bg-card/50 p-6 sm:grid-cols-2">
-          <div className="space-y-2 sm:col-span-2"><Label>Image URL</Label><Input placeholder="https://... (Drive/storage upload is a separate future task)" value={imageUrl} onChange={(e) => setImageUrl(e.target.value)} className="rounded-xl bg-background/50" /></div>
-          <div className="space-y-2"><Label>Caption</Label><Input value={caption} onChange={(e) => setCaption(e.target.value)} className="rounded-xl bg-background/50" /></div>
+          <div className="space-y-2 sm:col-span-2">
+            <Label>Photos (JPG, PNG or WebP — you can pick several)</Label>
+            <Input
+              ref={fileInputRef}
+              type="file"
+              accept="image/jpeg,image/png,image/webp"
+              multiple
+              onChange={(e) => setFiles(Array.from(e.target.files ?? []))}
+              className="rounded-xl bg-background/50 file:mr-3 file:rounded-full file:border-0 file:bg-primary/10 file:px-3 file:py-1 file:text-sm file:font-semibold file:text-primary"
+            />
+            {files.length > 0 && <p className="text-xs text-muted-foreground">{files.length} photo{files.length === 1 ? '' : 's'} selected</p>}
+          </div>
+          <div className="space-y-2"><Label>Caption (optional, applied to all selected)</Label><Input value={caption} onChange={(e) => setCaption(e.target.value)} className="rounded-xl bg-background/50" /></div>
           <div className="space-y-2">
             <Label>Season (optional)</Label>
             <select value={seasonId} onChange={(e) => setSeasonId(e.target.value)} className="h-10 w-full rounded-xl border border-input bg-background/50 px-3 text-sm">
@@ -309,7 +355,7 @@ export function GallerySection({
           {error && <p className="text-sm text-rose-400 sm:col-span-2">{error}</p>}
           <div className="flex gap-2 sm:col-span-2">
             <Button type="submit" size="sm" className="rounded-full" disabled={submitting}>
-              {submitting ? <Loader2 className="mr-1.5 h-4 w-4 animate-spin" /> : <Check className="mr-1.5 h-4 w-4" />} Add photo
+              {submitting ? <Loader2 className="mr-1.5 h-4 w-4 animate-spin" /> : <Check className="mr-1.5 h-4 w-4" />} {progress ?? 'Upload'}
             </Button>
             <Button type="button" size="sm" variant="ghost" className="rounded-full" onClick={() => setShowAdd(false)}>Cancel</Button>
           </div>

@@ -117,18 +117,6 @@ export function getStatusLabel(status: DisplayStatus): string {
   }
 }
 
-export const galleryTiles = [
-  { id: 'g1', label: 'Beach Olympics', accent: 'orange' as const, span: 'tall' as const, icon: Trophy },
-  { id: 'g2', label: 'Team Challenges', accent: 'teal' as const, span: 'wide' as const, icon: Users },
-  { id: 'g3', label: 'Campfire Nights', accent: 'gold' as const, span: 'normal' as const, icon: Star },
-  { id: 'g4', label: 'Desert Treks', accent: 'teal' as const, span: 'normal' as const, icon: Mountain },
-  { id: 'g5', label: 'Leadership Labs', accent: 'orange' as const, span: 'tall' as const, icon: Award },
-  { id: 'g6', label: 'Sunset Games', accent: 'gold' as const, span: 'wide' as const, icon: Sun },
-  { id: 'g7', label: 'Red Sea Swimming', accent: 'teal' as const, span: 'normal' as const, icon: Waves },
-  { id: 'g8', label: 'Camp Life', accent: 'orange' as const, span: 'normal' as const, icon: Tent },
-  { id: 'g9', label: 'Stargazing', accent: 'gold' as const, span: 'wide' as const, icon: Star },
-];
-
 export const faqItems = [
   { question: 'Where is the camp located?', answer: 'YWCA Camp is held in Ras Sedr, a coastal town on the Gulf of Suez in South Sinai, Egypt. The site features beach access, desert landscapes, and open-air activity areas — a perfect outdoor setting for a camping experience.' },
   { question: 'What ages can attend camp?', answer: 'We offer camps for ages 7–24. Kids Camps serve ages 7–11, Girls and Boys Camps serve ages 12–16, Uni Camp serves ages 18–24, and Leadership Camp serves ages 16–22. Check each camp\'s page for specific age requirements.' },

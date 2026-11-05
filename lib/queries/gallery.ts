@@ -1,6 +1,7 @@
 import 'server-only';
 import { cookies } from 'next/headers';
 import { createClient as createServerClient } from '@/utils/supabase/server';
+import { createAnonClient } from '@/utils/supabase/anon';
 
 export type GalleryImageRow = {
   id: string;
@@ -28,4 +29,15 @@ export async function getGalleryImagesPage({ page = 1, pageSize = 24 }: { page?:
   if (error) throw error;
 
   return { rows: (data ?? []) as GalleryImageRow[], count: count ?? 0, page, pageSize };
+}
+
+/** Public (guest) gallery read — newest first. */
+export async function getPublicGalleryImages(limit = 200) {
+  const { data, error } = await createAnonClient()
+    .from('gallery_images')
+    .select(COLUMNS)
+    .order('uploaded_at', { ascending: false })
+    .limit(limit);
+  if (error) throw error;
+  return (data ?? []) as GalleryImageRow[];
 }
