@@ -6,6 +6,9 @@
  * can always be bypassed by a direct POST.
  */
 
+export const GRADE_OPTIONS = ['Grade 3', 'Grade 4', 'Grade 5', 'Grade 6', 'Grade 7', 'Grade 8', 'Grade 9', 'Grade 10', 'Grade 11', 'Grade 12', 'UNI'] as const;
+export const TSHIRT_SIZES = ['XS', 'S', 'M', 'L', 'XL', 'XXL'] as const;
+
 const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 // Broad international phone format: digits, spaces, +, -, parens, 7-15
@@ -134,6 +137,13 @@ export function validateRegistrationInput(body: RegistrationInput): string | nul
     if (typeof raw === 'string' && raw.trim().length > max) {
       return `${label} must be ${max} characters or fewer.`;
     }
+  }
+
+  if (!(GRADE_OPTIONS as readonly string[]).includes(String(body.academicYear).trim())) {
+    return 'Please choose a valid grade.';
+  }
+  if (!(TSHIRT_SIZES as readonly string[]).includes(String(body.tshirtSize).trim())) {
+    return 'Please choose a valid T-shirt size.';
   }
 
   return null;

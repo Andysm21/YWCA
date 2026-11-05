@@ -10,6 +10,7 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { StepProgress } from '@/components/shared/step-progress';
 import { formatDateRange, formatPrice, type Camp } from '@/lib/camp-data';
 import { cn } from '@/lib/utils';
+import { GRADE_OPTIONS, TSHIRT_SIZES } from '@/lib/validation/registration';
 
 type Step1 = {
   camperName: string;
@@ -197,11 +198,17 @@ export function RegisterContent({ camp }: { camp: Camp }) {
               </div>
               <div className="space-y-2">
                 <Label htmlFor="academicYear">Academic year *</Label>
-                <Input id="academicYear" required placeholder="Grade 6" className="rounded-xl bg-background/50" value={step1.academicYear} onChange={(e) => setStep1({ ...step1, academicYear: e.target.value })} />
+                <select id="academicYear" required className="h-10 w-full rounded-xl border border-input bg-background/50 px-3 text-sm" value={step1.academicYear} onChange={(e) => setStep1({ ...step1, academicYear: e.target.value })}>
+                  <option value="" disabled>Select...</option>
+                  {GRADE_OPTIONS.map((o) => <option key={o} value={o}>{o}</option>)}
+                </select>
               </div>
               <div className="space-y-2">
                 <Label htmlFor="tshirtSize">T-shirt size *</Label>
-                <Input id="tshirtSize" required placeholder="M" className="rounded-xl bg-background/50" value={step1.tshirtSize} onChange={(e) => setStep1({ ...step1, tshirtSize: e.target.value })} />
+                <select id="tshirtSize" required className="h-10 w-full rounded-xl border border-input bg-background/50 px-3 text-sm" value={step1.tshirtSize} onChange={(e) => setStep1({ ...step1, tshirtSize: e.target.value })}>
+                  <option value="" disabled>Select...</option>
+                  {TSHIRT_SIZES.map((o) => <option key={o} value={o}>{o}</option>)}
+                </select>
               </div>
             </div>
             <label className="flex items-center gap-2.5 text-sm text-muted-foreground">
