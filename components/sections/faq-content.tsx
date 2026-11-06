@@ -1,6 +1,9 @@
 'use client';
 
+import Link from 'next/link';
+import { ArrowRight } from 'lucide-react';
 import { faqItems } from '@/lib/camp-data';
+import { Button } from '@/components/ui/button';
 import {
   Accordion,
   AccordionContent,
@@ -18,7 +21,12 @@ export function FaqContent() {
               {item.question}
             </AccordionTrigger>
             <AccordionContent className="text-sm leading-relaxed text-muted-foreground">
-              {item.answer}
+              <p>{item.answer}</p>
+              {item.link && (
+                <Button asChild size="sm" className="mt-4 rounded-full glow-orange">
+                  <Link href={item.link.href}>{item.link.label}<ArrowRight className="ml-1.5 h-4 w-4" /></Link>
+                </Button>
+              )}
             </AccordionContent>
           </AccordionItem>
         ))}

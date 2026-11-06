@@ -120,17 +120,16 @@ export function getStatusLabel(status: DisplayStatus): string {
   }
 }
 
-export const faqItems = [
+export const faqItems: { question: string; answer: string; link?: { href: string; label: string } }[] = [
   { question: 'Where is the camp located?', answer: 'YWCA Camp is held in Ras Sedr, a coastal town on the Gulf of Suez in South Sinai, Egypt. The site features beach access, desert landscapes, and open-air activity areas — a perfect outdoor setting for a camping experience.' },
   { question: 'What ages can attend camp?', answer: 'We offer camps for ages 7–24. Kids Camps serve ages 7–11, Girls and Boys Camps serve ages 12–16, Uni Camp serves ages 18–24, and Leadership Camp serves ages 16–22. Check each camp\'s page for specific age requirements.' },
   { question: 'How long is each camp session?', answer: 'Each camp runs for 7 days and 6 nights, from Sunday to Sunday. Check-in is on the first day in the early afternoon, and departure is on the final day after the closing ceremony.' },
-  { question: 'What is included in the camp fee?', answer: 'The fee covers all meals, accommodation, activities, equipment, a camp t-shirt, and supervision by our volunteer leader team. Transportation to and from Ras Sedr is not included, but we provide a recommended bus service from Cairo for an additional fee.' },
+  { question: 'What is included in the camp fee?', answer: 'The fee covers meals, accommodation, activities, equipment, a camp t-shirt, and supervision by our volunteer leader team. Transportation to and from the camp is also included. If a particular camp requires any extra fees, we will contact the parents directly.' },
   { question: 'Who are the camp leaders?', answer: 'Our leaders are a diverse volunteer team of former campers. They range from experienced older leaders with over a decade of camp experience to newer younger leaders stepping into their first counseling role. All leaders complete our Leadership Camp training program.' },
-  { question: 'What should my child pack?', answer: 'We provide a detailed packing list for each camp. Essentials include swimwear, sun protection, comfortable clothing, a reusable water bottle, and a sleeping bag. Visit our Packing List page for the complete checklist.' },
-  { question: 'Is the camp safe?', answer: 'Safety is our top priority. We maintain a leader-to-camper ratio of at least 1:6, have a first-aid station on site, and all water activities are supervised by certified lifeguards. We also have emergency protocols and nearby medical facilities.' },
-  { question: 'Can my child attend more than one camp?', answer: 'Absolutely! Many campers attend multiple sessions per season. Each camp has a slightly different program, and returning campers often take on mentor roles. You will need to register separately for each camp.' },
+  { question: 'What should my child pack?', answer: 'We provide a complete packing list covering clothing, toiletries and other essentials. You can view it online or download it as a PDF.', link: { href: '/packing', label: 'View the packing list' } },
+  { question: 'Is the camp safe?', answer: 'Safety is our top priority. We maintain a leader-to-camper ratio of at least 1:6 and have a first-aid station on site.' },
   { question: 'What is the refund policy?', answer: 'Full refunds are available up to 30 days before the camp start date. Between 30 and 14 days, a 50% refund is available. Within 14 days, the fee is non-refundable. In case of medical emergencies, we review refund requests on a case-by-case basis.' },
-  { question: 'How do I register my child?', answer: 'Visit our Register page, choose the camp session, and complete the two-step registration form. Step 1 collects camper information, and Step 2 collects guardian and payment details. You will receive a confirmation email after completing registration.' },
+  { question: 'How do I register my child?', answer: 'Visit our Register page and choose the camp session. First read the camp rules and agree to them, then read the registration instructions and fill in the camper and guardian details. After you submit the form, you will receive an email with a payment link. Your registration is only complete, and your spot secured, once you pay the full amount through that link and upload a screenshot as proof of payment. Our team then confirms your spot by email. If these steps are not completed, the registration stays pending and a spot is not guaranteed.' },
 ];
 
 export const packingCategories = [
