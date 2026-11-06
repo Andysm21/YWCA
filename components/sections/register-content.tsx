@@ -291,12 +291,17 @@ export function RegisterContent({ camp }: { camp: Camp }) {
             <div className="mx-auto mb-6 flex h-20 w-20 items-center justify-center rounded-full bg-emerald-500/15 text-emerald-400">
               <PartyPopper className="h-10 w-10" />
             </div>
-            <h2 className="font-display text-2xl font-bold text-foreground">{result.status === 'waitlisted' ? "You're on the waitlist!" : 'Registration submitted!'}</h2>
+            <h2 className="font-display text-2xl font-bold text-foreground">{result.status === 'waitlisted' ? "You're on the waitlist!" : 'Almost there — payment needed'}</h2>
             <p className="mt-2 text-muted-foreground">
               {result.status === 'waitlisted'
                 ? `We've added ${step1.camperName} to the waitlist for ${camp.name} (position ${result.waitlist_position}). We'll contact you at ${step2.parentEmail} if a spot opens up.`
-                : `We've received ${step1.camperName}'s registration for ${camp.name}. Registration number ${result.registration_number} — a confirmation is on its way to ${step2.parentEmail}.`}
+                : `We've received ${step1.camperName}'s form for ${camp.name} (registration number ${result.registration_number}). The spot is NOT secured yet: check ${step2.parentEmail} for an email with your payment link, pay the full amount and upload your payment screenshot. Until then the registration stays pending.`}
             </p>
+            {result.status !== 'waitlisted' && (
+              <p className="mx-auto mt-6 max-w-md rounded-xl border border-amber-500/40 bg-amber-500/10 p-3 text-sm font-semibold text-foreground">
+                ⏳ Status: Pending payment — your spot is not secured until you pay and upload proof of payment.
+              </p>
+            )}
             <div className="mx-auto mt-8 max-w-sm space-y-3 rounded-xl border border-border/60 bg-background/40 p-5 text-left text-sm">
               <Row label="Registration #" value={result.registration_number} />
               <Row label="Camp" value={camp.name} />

@@ -183,116 +183,60 @@ type PendingPaymentEmailParams = {
 
 const LOCATION_URL = 'https://ywcacampegypt.com/location';
 
-/**
- * Final approved design (as of 2026-07-30) — a standalone self-contained
- * document, deliberately NOT sharing wrapEmailHtml/NO_REPLY_HTML/etc with
- * the waitlist templates below, since this layout (rounded card, teal/
- * orange palette, meeting-points panel) is its own approved design, not a
- * variant of the shared wrapper. Don't refactor this back into the shared
- * wrapper without the same explicit sign-off this template got.
- */
-export async function sendPendingPaymentEmail(params: PendingPaymentEmailParams): Promise<SendResult> {
-  const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? '';
-  const paymentUrl = `${siteUrl}/register/${params.campSlug}/payment?code=${encodeURIComponent(params.registrationNumber)}`;
-  const priceLabel = params.priceEgp.toLocaleString();
-  const meetingPointsHtml = params.meetingPoints.map((point) => `<li>${escapeHtml(point)}</li>`).join('');
-  const meetingPointsText = params.meetingPoints.map((point) => `- ${point}`).join('\n');
+const EMAIL_FONT = "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif";
 
-  const html = `<!DOCTYPE html>
+/** Light-wordmark logo (transparent PNG) hosted on our own site; falls back to the Drive logo on a white chip when the site URL isn't a public https URL (e.g. local dev). */
+function heroLogoHtml(siteUrl: string): string {
+  if (siteUrl.startsWith('https://')) {
+    return `<img src="${siteUrl}/logo-light.png" alt="YWCA Camp" width="92" style="display:block; margin:0 auto; height:auto;" />`;
+  }
+  return `<span style="display:inline-block; background:#ffffff; border-radius:16px; padding:8px;"><img src="${LOGO_URL}" alt="YWCA Camp" width="56" height="56" style="display:block;" /></span>`;
+}
+
+type EmailShellOptions = {
+  preheader: string;
+  pill: string;
+  pillColor?: string;
+  title: string;
+  subtitle: string;
+  contentHtml: string;
+};
+
+/** Shared "cool" layout for the action-needed emails: navy hero with a sunset stripe, content card, footer. */
+function emailShell(opts: EmailShellOptions): string {
+  const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? '';
+  const pillColor = opts.pillColor ?? '#F5B83D';
+  return `<!DOCTYPE html>
 <html>
 <head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"></head>
-<body style="margin:0; padding:0; background-color:#eef2f0; font-family:Arial, Helvetica, sans-serif;">
-<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background-color:#eef2f0; padding:32px 16px;">
+<body style="margin:0; padding:0; background-color:#F3EEE6; font-family:${EMAIL_FONT};">
+<div style="display:none; max-height:0; overflow:hidden; opacity:0; color:#F3EEE6;">${escapeHtml(opts.preheader)}</div>
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background-color:#F3EEE6; padding:28px 12px;">
 <tr><td align="center">
-<table role="presentation" width="600" cellpadding="0" cellspacing="0" style="max-width:600px; background-color:#ffffff; border-radius:20px; overflow:hidden; box-shadow:0 2px 12px rgba(0,0,0,0.06);">
+<table role="presentation" width="600" cellpadding="0" cellspacing="0" style="width:100%; max-width:600px; background-color:#ffffff; border-radius:24px; overflow:hidden; box-shadow:0 6px 28px rgba(27,31,58,0.12);">
 
 <tr>
-<td style="padding:28px 28px 0;">
-<img src="${LOGO_URL}" alt="YWCA Camp" width="56" height="56" style="display:block; border-radius:10px;" />
+<td align="center" bgcolor="#1B1F3A" style="background-color:#1B1F3A; background-image:linear-gradient(135deg,#1B1F3A 0%,#2A2F57 100%); padding:34px 28px 30px;">
+${heroLogoHtml(siteUrl)}
+<p style="margin:18px 0 0;"><span style="display:inline-block; background-color:${pillColor}; color:#1B1F3A; font-size:11px; font-weight:800; letter-spacing:0.14em; text-transform:uppercase; padding:6px 14px; border-radius:100px;">${escapeHtml(opts.pill)}</span></p>
+<h1 style="margin:14px 0 6px; font-size:30px; line-height:1.15; color:#ffffff; font-weight:800;">${opts.title}</h1>
+<p style="margin:0; font-size:15px; line-height:1.5; color:#C9CBE0;">${opts.subtitle}</p>
+</td>
+</tr>
+<tr>
+<td height="6" bgcolor="#E8531E" style="height:6px; line-height:6px; font-size:0; background-color:#E8531E; background-image:linear-gradient(90deg,#E8531E 0%,#F5B83D 100%);">&nbsp;</td>
+</tr>
+
+<tr>
+<td style="padding:30px 28px 8px;">
+${opts.contentHtml}
 </td>
 </tr>
 
 <tr>
-<td style="padding:16px 28px 28px;">
-<h1 style="margin:0; font-size:26px; color:#1a3c34; font-weight:800;">Registration Confirmed 🎉</h1>
-<p style="margin:8px 0 0; font-size:15px; color:#5a6b64;">Get ready for an unforgettable week.</p>
-</td>
-</tr>
-
-<tr>
-<td style="padding:0 28px 24px;">
-<p style="margin:0 0 16px; font-size:16px; color:#1a1a2e; line-height:1.6;">Hello <strong>${escapeHtml(params.camperName)}</strong>,</p>
-<p style="margin:0; font-size:16px; color:#1a1a2e; line-height:1.6;">We are thrilled to confirm your registration for <strong>${escapeHtml(params.campName)}</strong>. Here's everything you need:</p>
-</td>
-</tr>
-
-<tr>
-<td style="padding:0 28px;">
-<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:linear-gradient(135deg,#FFF4E8,#FFE8D6); background-color:#FFF4E8; border-radius:14px;">
-<tr><td style="padding:22px 24px;">
-<table role="presentation" width="100%" cellpadding="0" cellspacing="0">
-<tr>
-<td style="padding:6px 0; font-size:13px; color:#8a6a4a; width:40%;">Registration No.</td>
-<td style="padding:6px 0; font-size:15px; color:#B34A17; font-weight:800; text-align:right;">${escapeHtml(params.registrationNumber)}</td>
-</tr>
-<tr>
-<td style="padding:6px 0; font-size:13px; color:#8a6a4a;">Camp</td>
-<td style="padding:6px 0; font-size:15px; color:#1a1a2e; font-weight:700; text-align:right;">${escapeHtml(params.campName)}</td>
-</tr>
-<tr>
-<td style="padding:6px 0; font-size:13px; color:#8a6a4a;">Camper</td>
-<td style="padding:6px 0; font-size:15px; color:#1a1a2e; font-weight:700; text-align:right;">${escapeHtml(params.camperName)}</td>
-</tr>
-<tr>
-<td style="padding:6px 0; font-size:13px; color:#8a6a4a;">Mobile</td>
-<td style="padding:6px 0; font-size:15px; color:#1a1a2e; font-weight:700; text-align:right;">${escapeHtml(params.mobilePhone)}</td>
-</tr>
-<tr>
-<td style="padding:6px 0; font-size:13px; color:#8a6a4a;">Camp Fee</td>
-<td style="padding:6px 0; font-size:15px; color:#1a6b5c; font-weight:800; text-align:right;">EGP ${priceLabel}</td>
-</tr>
-</table>
-</td></tr>
-</table>
-</td>
-</tr>
-
-<tr>
-<td style="padding:20px 28px 0;">
-<p style="margin:0; font-size:15px; color:#1a1a2e; line-height:1.6;">📍 The camp will take place at <a href="${LOCATION_URL}" style="color:#1a6b5c; font-weight:700;">Paradise Beach, Ras Sudr</a>.</p>
-</td>
-</tr>
-
-<tr>
-<td align="center" style="padding:24px 28px;">
-<a href="${escapeHtml(paymentUrl)}" style="display:inline-block; background-color:#1a6b5c; color:#ffffff; font-size:16px; font-weight:bold; text-decoration:none; padding:15px 40px; border-radius:100px;">Click to Pay →</a>
-</td>
-</tr>
-
-<tr>
-<td style="padding:4px 28px 24px;">
-<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background-color:#F7F7F5; border-radius:12px;">
-<tr><td style="padding:18px 20px;">
-<p style="margin:0 0 8px; font-size:14px; color:#1a1a2e; font-weight:bold;">🚌 Meeting Points</p>
-<ul style="margin:0 0 14px; padding-left:18px; font-size:14px; color:#5a5a5a; line-height:1.7;">
-${meetingPointsHtml}
-</ul>
-<p style="margin:0; font-size:13px; color:#5a5a5a; line-height:1.6;">We will contact you a few days prior to the camp to confirm further details.</p>
-</td></tr>
-</table>
-</td>
-</tr>
-
-<tr>
-<td style="padding:0 28px 24px;">
-<p style="margin:0; font-size:16px; color:#1a3c34; font-weight:700;">See you at Paradise Beach! 🏖️</p>
-</td>
-</tr>
-
-<tr>
-<td style="padding:0 28px 28px;">
-<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background-color:#FDECEC; border-radius:10px;">
-<tr><td style="padding:14px 18px; font-size:13px; color:#B32424; font-weight:bold; line-height:1.5; text-align:center;">
+<td style="padding:8px 28px 26px;">
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background-color:#FDECEC; border-radius:12px;">
+<tr><td style="padding:13px 16px; font-size:12px; color:#B32424; font-weight:bold; line-height:1.5; text-align:center;">
 ⚠ This is an automated email. Please do not reply to this email or send any emails to this address — they will not be read or answered.
 </td></tr>
 </table>
@@ -300,8 +244,9 @@ ${meetingPointsHtml}
 </tr>
 
 <tr>
-<td style="padding:0 28px 32px; text-align:center;">
-<p style="margin:0; font-size:13px; color:#8a8a8a;">Kind regards, <strong style="color:#1a3c34;">YWCA Camp Team</strong></p>
+<td align="center" bgcolor="#F8F4EC" style="background-color:#F8F4EC; padding:22px 28px;">
+<p style="margin:0 0 4px; font-size:13px; color:#6B6E80;">Kind regards, <strong style="color:#1B1F3A;">YWCA Camp Team</strong></p>
+<p style="margin:0; font-size:12px; color:#9A9CAD;">Ras Sedr, South Sinai, Egypt</p>
 </td>
 </tr>
 
@@ -310,29 +255,128 @@ ${meetingPointsHtml}
 </table>
 </body>
 </html>`;
+}
 
-  const text = `Registration Confirmed
+type StepState = 'done' | 'now' | 'next';
 
-Hello ${params.camperName},
+function stepRowHtml(n: number, title: string, body: string, state: StepState): string {
+  const circle =
+    state === 'done'
+      ? `<td width="38" valign="top"><div style="width:30px; height:30px; line-height:30px; border-radius:15px; background-color:#1A9B6C; color:#ffffff; text-align:center; font-weight:800; font-size:15px;">✓</div></td>`
+      : state === 'now'
+        ? `<td width="38" valign="top"><div style="width:30px; height:30px; line-height:30px; border-radius:15px; background-color:#E8531E; color:#ffffff; text-align:center; font-weight:800; font-size:14px;">${n}</div></td>`
+        : `<td width="38" valign="top"><div style="width:26px; height:26px; line-height:26px; border-radius:15px; border:2px solid #D8D4CB; color:#8A8D9F; text-align:center; font-weight:800; font-size:13px;">${n}</div></td>`;
+  const titleColor = state === 'next' ? '#6B6E80' : '#1B1F3A';
+  const tag = state === 'done' ? ' <span style="color:#1A9B6C; font-size:12px; font-weight:700;">DONE</span>' : state === 'now' ? ' <span style="color:#E8531E; font-size:12px; font-weight:700;">← YOU ARE HERE</span>' : '';
+  return `<tr>${circle}<td style="padding:0 0 18px;"><p style="margin:0; font-size:15px; font-weight:800; color:${titleColor};">${escapeHtml(title)}${tag}</p><p style="margin:3px 0 0; font-size:13px; line-height:1.55; color:#6B6E80;">${body}</p></td></tr>`;
+}
 
-We are thrilled to confirm your registration for ${params.campName}. Here's everything you need:
+function detailRowHtml(label: string, value: string, valueColor = '#1B1F3A'): string {
+  return `<tr><td style="padding:7px 0; font-size:13px; color:#8A6A4A; width:42%;">${label}</td><td style="padding:7px 0; font-size:15px; color:${valueColor}; font-weight:800; text-align:right;">${value}</td></tr>`;
+}
+
+function ctaButtonHtml(url: string, label: string): string {
+  return `<table role="presentation" cellpadding="0" cellspacing="0" align="center" style="margin:0 auto;"><tr><td align="center" bgcolor="#E8531E" style="background-color:#E8531E; background-image:linear-gradient(135deg,#F06A2A,#D9481A); border-radius:100px; box-shadow:0 6px 16px rgba(232,83,30,0.35);"><a href="${escapeHtml(url)}" style="display:inline-block; padding:17px 44px; color:#ffffff; font-size:17px; font-weight:800; text-decoration:none; letter-spacing:0.01em;">${label}</a></td></tr></table>`;
+}
+
+/**
+ * Sent right after the registration form is submitted. IMPORTANT wording:
+ * at this point the camper is only PENDING PAYMENT — they are NOT
+ * registered and NO spot is reserved until they pay in full AND upload the
+ * proof of payment, so this email must never say "confirmed"/"successful".
+ */
+export async function sendPendingPaymentEmail(params: PendingPaymentEmailParams): Promise<SendResult> {
+  const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? '';
+  const paymentUrl = `${siteUrl}/register/${params.campSlug}/payment?code=${encodeURIComponent(params.registrationNumber)}`;
+  const priceLabel = params.priceEgp.toLocaleString();
+  const firstName = params.camperName.trim().split(/\s+/)[0] || 'there';
+  const meetingPointsHtml = params.meetingPoints.map((point) => `<li>${escapeHtml(point)}</li>`).join('');
+  const meetingPointsText = params.meetingPoints.map((point) => `- ${point}`).join('\n');
+
+  const contentHtml = `
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background-color:#FFF6DD; border:2px solid #F5B83D; border-radius:14px;">
+<tr><td style="padding:16px 18px;">
+<p style="margin:0 0 4px; font-size:12px; font-weight:800; letter-spacing:0.1em; color:#9A6A00;">⏳ STATUS: PENDING PAYMENT</p>
+<p style="margin:0; font-size:15px; line-height:1.55; color:#3D2F00;"><strong>Your spot is NOT secured yet.</strong> You are only registered once you pay the full amount <em>and</em> upload your proof of payment.</p>
+</td></tr>
+</table>
+
+<p style="margin:22px 0 6px; font-size:16px; line-height:1.6; color:#1B1F3A;">Hi <strong>${escapeHtml(params.camperName)}</strong>,</p>
+<p style="margin:0 0 22px; font-size:15px; line-height:1.6; color:#4A4D63;">Thanks for filling in the registration form for <strong>${escapeHtml(params.campName)}</strong> — that was step one! Here is how to lock in your place:</p>
+
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0">
+${stepRowHtml(1, 'Registration form', 'We have your details.', 'done')}
+${stepRowHtml(2, `Pay the full amount — EGP ${priceLabel}`, 'Use the button below to open your personal payment page.', 'now')}
+${stepRowHtml(3, 'Upload your proof of payment', 'Add a screenshot of the payment on the same page.', 'next')}
+${stepRowHtml(4, 'We confirm your spot', 'Our team checks your payment, then emails you a final confirmation.', 'next')}
+</table>
+
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin:6px 0 24px;"><tr><td>${ctaButtonHtml(paymentUrl, 'Pay &amp; Secure My Spot →')}</td></tr></table>
+
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background-color:#FFF4E8; border-radius:14px;">
+<tr><td style="padding:18px 22px;">
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0">
+${detailRowHtml('Registration No.', escapeHtml(params.registrationNumber), '#B34A17')}
+${detailRowHtml('Camp', escapeHtml(params.campName))}
+${detailRowHtml('Camper', escapeHtml(params.camperName))}
+${detailRowHtml('Mobile', escapeHtml(params.mobilePhone))}
+${detailRowHtml('Amount due', `EGP ${priceLabel}`, '#1A6B5C')}
+</table>
+</td></tr>
+</table>
+
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin-top:18px; background-color:#FDECEC; border-radius:12px;">
+<tr><td style="padding:14px 18px; font-size:13px; line-height:1.55; color:#8F1D1D;">
+<strong>Please note:</strong> if the payment and proof of payment are not completed in this order, your registration stays <strong>pending</strong>, you will <strong>not</strong> be registered, and a place is <strong>not guaranteed</strong>.
+</td></tr>
+</table>
+
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin-top:18px; background-color:#F5F5F2; border-radius:12px;">
+<tr><td style="padding:18px 20px;">
+<p style="margin:0 0 6px; font-size:14px; font-weight:800; color:#1B1F3A;">📍 Where &amp; when to meet (once your spot is confirmed)</p>
+<p style="margin:0 0 10px; font-size:13px; color:#5A5D70; line-height:1.6;">The camp takes place at <a href="${LOCATION_URL}" style="color:#1A6B5C; font-weight:700;">Paradise Beach, Ras Sudr</a>.</p>
+<ul style="margin:0 0 12px; padding-left:18px; font-size:13px; color:#5A5D70; line-height:1.7;">
+${meetingPointsHtml}
+</ul>
+<p style="margin:0; font-size:12px; color:#7A7D90; line-height:1.6;">We will contact confirmed campers a few days before camp with further details.</p>
+</td></tr>
+</table>
+`;
+
+  const html = emailShell({
+    preheader: `Your spot at ${params.campName} is not secured yet — pay in full and upload your proof of payment.`,
+    pill: 'Action needed',
+    title: `Almost there, ${escapeHtml(firstName)}!`,
+    subtitle: `Your spot at ${escapeHtml(params.campName)} isn't secured yet.`,
+    contentHtml,
+  });
+
+  const text = `ACTION NEEDED - YOUR SPOT IS NOT SECURED YET
+
+Hi ${params.camperName},
+
+Thanks for filling in the registration form for ${params.campName}. Your registration is PENDING PAYMENT: you are only registered, and your spot is only secured, once you pay the full amount AND upload your proof of payment.
+
+How to secure your spot:
+1. Registration form - DONE
+2. Pay the full amount (EGP ${priceLabel}) using your personal payment page
+3. Upload a screenshot of your payment on the same page
+4. We check your payment and email you a final confirmation
+
+Pay & secure my spot: ${paymentUrl}
 
 Registration No.: ${params.registrationNumber}
 Camp: ${params.campName}
 Camper: ${params.camperName}
 Mobile: ${params.mobilePhone}
-Camp Fee: EGP ${priceLabel}
+Amount due: EGP ${priceLabel}
 
-The camp will take place at Paradise Beach, Ras Sudr (${LOCATION_URL}).
+Please note: if the payment and proof of payment are not completed in this order, your registration stays pending, you will not be registered, and a place is not guaranteed.
 
-Click to Pay: ${paymentUrl}
-
-Meeting Points:
+Where & when to meet (once your spot is confirmed)
+Paradise Beach, Ras Sudr (${LOCATION_URL})
 ${meetingPointsText}
-
-We will contact you a few days prior to the camp to confirm further details.
-
-See you at Paradise Beach!
+We will contact confirmed campers a few days before camp with further details.
 ${NO_REPLY_TEXT}
 Kind regards,
 YWCA Camp Team`;
@@ -340,7 +384,7 @@ YWCA Camp Team`;
   return sendMailSafely({
     from: `"YWCA Camp" <${process.env.GMAIL_USER}>`,
     to: params.to,
-    subject: `Registration received — ${params.campName} (${params.registrationNumber})`,
+    subject: `Action needed: pay to secure your spot — ${params.campName} (${params.registrationNumber})`,
     html,
     text,
   });
@@ -398,42 +442,77 @@ type WaitlistPromotedEmailParams = {
 export async function sendWaitlistPromotedEmail(params: WaitlistPromotedEmailParams): Promise<SendResult> {
   const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? '';
   const paymentUrl = `${siteUrl}/register/${params.campSlug}/payment?code=${encodeURIComponent(params.registrationNumber)}`;
+  const priceLabel = params.priceEgp.toLocaleString();
+  const firstName = params.camperName.trim().split(/\s+/)[0] || 'there';
 
-  const bodyHtml = `
-    <p style="margin: 0 0 16px; color: ${BRAND.navy}; font-size: 15px; line-height: 1.6;">Hi,</p>
-    <p style="margin: 0 0 16px; color: ${BRAND.navy}; font-size: 15px; line-height: 1.6;">
-      Good news — a spot opened up in <strong>${escapeHtml(params.campName)}</strong> and <strong>${escapeHtml(params.camperName)}</strong> is off the waitlist!
-    </p>
-    <table role="presentation" width="100%" style="margin: 20px 0; border-collapse: collapse; background: #f5f0e8; border-radius: 10px;">
-      <tr><td style="padding: 16px 20px;">
-        <p style="margin: 0 0 6px; color: #8a8478; font-size: 12px; text-transform: uppercase; letter-spacing: 0.05em;">Registration number</p>
-        <p style="margin: 0 0 14px; color: ${BRAND.orange}; font-size: 20px; font-weight: 700;">${escapeHtml(params.registrationNumber)}</p>
-        <p style="margin: 0 0 6px; color: #8a8478; font-size: 12px; text-transform: uppercase; letter-spacing: 0.05em;">Total due</p>
-        <p style="margin: 0; color: ${BRAND.navy}; font-size: 18px; font-weight: 700;">EGP ${params.priceEgp.toLocaleString()}</p>
-      </td></tr>
-    </table>
-    <p style="margin: 0 0 20px; color: ${BRAND.navy}; font-size: 15px; line-height: 1.6;">Complete payment soon to secure the spot:</p>
-    <table role="presentation" style="margin: 0 0 16px; border-collapse: collapse;">
-      <tr><td style="background: ${BRAND.orange}; border-radius: 999px;">
-        <a href="${escapeHtml(paymentUrl)}" style="display: inline-block; padding: 12px 28px; color: #ffffff; font-weight: 700; font-size: 14px; text-decoration: none;">Complete payment &amp; upload documents</a>
-      </td></tr>
-    </table>
-  `;
+  const contentHtml = `
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background-color:#FFF6DD; border:2px solid #F5B83D; border-radius:14px;">
+<tr><td style="padding:16px 18px;">
+<p style="margin:0 0 4px; font-size:12px; font-weight:800; letter-spacing:0.1em; color:#9A6A00;">⏳ STATUS: PENDING PAYMENT</p>
+<p style="margin:0; font-size:15px; line-height:1.55; color:#3D2F00;"><strong>A spot is open for you, but it is not secured yet.</strong> It is yours once you pay the full amount <em>and</em> upload your proof of payment.</p>
+</td></tr>
+</table>
+
+<p style="margin:22px 0 22px; font-size:15px; line-height:1.6; color:#4A4D63;">Hi <strong>${escapeHtml(params.camperName)}</strong>, a place opened up in <strong>${escapeHtml(params.campName)}</strong> and you are off the waitlist. To claim it:</p>
+
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0">
+${stepRowHtml(1, `Pay the full amount — EGP ${priceLabel}`, 'Use the button below to open your personal payment page.', 'now')}
+${stepRowHtml(2, 'Upload your proof of payment', 'Add a screenshot of the payment on the same page.', 'next')}
+${stepRowHtml(3, 'We confirm your spot', 'Our team checks your payment, then emails you a final confirmation.', 'next')}
+</table>
+
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin:6px 0 24px;"><tr><td>${ctaButtonHtml(paymentUrl, 'Pay &amp; Claim My Spot →')}</td></tr></table>
+
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background-color:#FFF4E8; border-radius:14px;">
+<tr><td style="padding:18px 22px;">
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0">
+${detailRowHtml('Registration No.', escapeHtml(params.registrationNumber), '#B34A17')}
+${detailRowHtml('Camp', escapeHtml(params.campName))}
+${detailRowHtml('Camper', escapeHtml(params.camperName))}
+${detailRowHtml('Amount due', `EGP ${priceLabel}`, '#1A6B5C')}
+</table>
+</td></tr>
+</table>
+
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin-top:18px; background-color:#FDECEC; border-radius:12px;">
+<tr><td style="padding:14px 18px; font-size:13px; line-height:1.55; color:#8F1D1D;">
+<strong>Please note:</strong> until payment and proof of payment are completed, the spot is <strong>not guaranteed</strong> and may be offered to the next camper on the waitlist.
+</td></tr>
+</table>
+`;
+
+  const html = emailShell({
+    preheader: `A spot opened up in ${params.campName} — pay in full and upload your proof of payment to claim it.`,
+    pill: 'Good news',
+    pillColor: '#6EE7B7',
+    title: `A spot opened up, ${escapeHtml(firstName)}!`,
+    subtitle: `You're off the waitlist for ${escapeHtml(params.campName)}.`,
+    contentHtml,
+  });
 
   return sendMailSafely({
     from: `"YWCA Camp" <${process.env.GMAIL_USER}>`,
     to: params.to,
-    subject: `A spot opened up — ${params.campName} (${params.registrationNumber})`,
-    html: wrapEmailHtml(bodyHtml),
-    text: `Hi,
+    subject: `A spot opened up — pay to claim it: ${params.campName} (${params.registrationNumber})`,
+    html,
+    text: `GOOD NEWS - A SPOT OPENED UP (NOT SECURED YET)
 
-Good news — a spot opened up in ${params.campName} and ${params.camperName} is off the waitlist!
+Hi ${params.camperName},
 
-Registration number: ${params.registrationNumber}
-Total due: EGP ${params.priceEgp.toLocaleString()}
+A place opened up in ${params.campName} and you are off the waitlist. The spot is yours only once you pay the full amount AND upload your proof of payment.
 
-Complete payment soon to secure the spot:
-${paymentUrl}
+1. Pay the full amount (EGP ${priceLabel}) using your personal payment page
+2. Upload a screenshot of your payment on the same page
+3. We check your payment and email you a final confirmation
+
+Pay & claim my spot: ${paymentUrl}
+
+Registration No.: ${params.registrationNumber}
+Camp: ${params.campName}
+Camper: ${params.camperName}
+Amount due: EGP ${priceLabel}
+
+Please note: until payment and proof of payment are completed, the spot is not guaranteed and may be offered to the next camper on the waitlist.
 ${NO_REPLY_TEXT}`,
   });
 }
