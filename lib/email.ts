@@ -1,5 +1,6 @@
 import 'server-only';
 import nodemailer from 'nodemailer';
+import { getSiteUrl, getEmailAssetBase } from '@/lib/site-url';
 
 /**
  * Separate from Supabase Auth's SMTP config (that one sends invite/recovery
@@ -100,22 +101,6 @@ const BRAND = {
   sand: '#faf6f0',
 };
 
-/**
- * Email clients fetch <img src> from the open internet, not from this app's
- * dev/prod server — a relative path or a localhost NEXT_PUBLIC_SITE_URL
- * resolves to nothing from Gmail/Outlook's servers, hence the broken-image
- * icon. A base64 data: URI was tried first, but Gmail clips messages over
- * ~102KB and the clip landed mid-base64-string, corrupting the image (and
- * bloating every send). Using a hosted URL instead — a public "Anyone with
- * the link" Google Drive file for now, since the real site isn't deployed.
- *
- * TODO once deployed: switch to a URL on our own domain, or a proper image
- * CDN — Drive's `uc?export=view` hotlink format isn't intended for
- * production hotlinking and can be rate-limited/rotated by Google over
- * time. Fine as a stopgap only.
- */
-const LOGO_URL = 'https://drive.google.com/uc?export=view&id=1YauXg9O6XtFyzK7glAW5C4xXEDZ4cJsV';
-
 const NO_REPLY_HTML = `
   <table role="presentation" width="100%" style="margin: 24px 0; border-collapse: collapse;">
     <tr>
@@ -146,7 +131,7 @@ function wrapEmailHtml(bodyHtml: string, signOffHtml?: string): string {
           <table role="presentation" width="100%" style="max-width: 560px; background: #ffffff; border-radius: 16px; overflow: hidden; border-collapse: collapse;">
             <tr>
               <td style="background: linear-gradient(135deg, ${BRAND.orange}, #c94f1f); padding: 28px 32px; text-align: center;">
-                <img src="${LOGO_URL}" alt="YWCA Camp" width="56" height="56" style="display: inline-block; object-fit: contain;" />
+                <span style="display: inline-block; background: #ffffff; border-radius: 16px; padding: 8px 10px;"><img src="${getEmailAssetBase()}/logo.png" alt="YWCA Camp" width="64" style="display: block; height: auto; border: 0;" /></span>
                 <p style="margin: 8px 0 0; color: #ffffff; font-weight: 700; font-size: 18px; letter-spacing: 0.02em;">YWCA Camp</p>
               </td>
             </tr>
@@ -185,12 +170,9 @@ const LOCATION_URL = 'https://ywcacampegypt.com/location';
 
 const EMAIL_FONT = "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif";
 
-/** Light-wordmark logo (transparent PNG) hosted on our own site; falls back to the Drive logo on a white chip when the site URL isn't a public https URL (e.g. local dev). */
-function heroLogoHtml(siteUrl: string): string {
-  if (siteUrl.startsWith('https://')) {
-    return `<img src="${siteUrl}/logo-light.png" alt="YWCA Camp" width="92" style="display:block; margin:0 auto; height:auto;" />`;
-  }
-  return `<span style="display:inline-block; background:#ffffff; border-radius:16px; padding:8px;"><img src="${LOGO_URL}" alt="YWCA Camp" width="56" height="56" style="display:block;" /></span>`;
+/** Light-wordmark transparent logo hosted on our own public site (mail clients can only load public https images). */
+function heroLogoHtml(): string {
+  return `<img src="${getEmailAssetBase()}/logo-light.png" alt="YWCA Camp" width="110" style="display:block; margin:0 auto; height:auto; border:0;" />`;
 }
 
 type EmailShellOptions = {
@@ -204,7 +186,6 @@ type EmailShellOptions = {
 
 /** Shared "cool" layout for the action-needed emails: navy hero with a sunset stripe, content card, footer. */
 function emailShell(opts: EmailShellOptions): string {
-  const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? '';
   const pillColor = opts.pillColor ?? '#F5B83D';
   return `<!DOCTYPE html>
 <html>
@@ -217,7 +198,7 @@ function emailShell(opts: EmailShellOptions): string {
 
 <tr>
 <td align="center" bgcolor="#1B1F3A" style="background-color:#1B1F3A; background-image:linear-gradient(135deg,#1B1F3A 0%,#2A2F57 100%); padding:34px 28px 30px;">
-${heroLogoHtml(siteUrl)}
+${heroLogoHtml()}
 <p style="margin:18px 0 0;"><span style="display:inline-block; background-color:${pillColor}; color:#1B1F3A; font-size:11px; font-weight:800; letter-spacing:0.14em; text-transform:uppercase; padding:6px 14px; border-radius:100px;">${escapeHtml(opts.pill)}</span></p>
 <h1 style="margin:14px 0 6px; font-size:30px; line-height:1.15; color:#ffffff; font-weight:800;">${opts.title}</h1>
 <p style="margin:0; font-size:15px; line-height:1.5; color:#C9CBE0;">${opts.subtitle}</p>
@@ -286,7 +267,7 @@ function ctaButtonHtml(url: string, label: string): string {
  * proof of payment, so this email must never say "confirmed"/"successful".
  */
 export async function sendPendingPaymentEmail(params: PendingPaymentEmailParams): Promise<SendResult> {
-  const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? '';
+  const siteUrl = getSiteUrl();
   const paymentUrl = `${siteUrl}/register/${params.campSlug}/payment?code=${encodeURIComponent(params.registrationNumber)}`;
   const priceLabel = params.priceEgp.toLocaleString();
   const firstName = params.camperName.trim().split(/\s+/)[0] || 'there';
@@ -440,7 +421,7 @@ type WaitlistPromotedEmailParams = {
 
 /** Sent when Admin/Super Admin promotes a waitlisted registration (Track B) — a spot opened up. */
 export async function sendWaitlistPromotedEmail(params: WaitlistPromotedEmailParams): Promise<SendResult> {
-  const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? '';
+  const siteUrl = getSiteUrl();
   const paymentUrl = `${siteUrl}/register/${params.campSlug}/payment?code=${encodeURIComponent(params.registrationNumber)}`;
   const priceLabel = params.priceEgp.toLocaleString();
   const firstName = params.camperName.trim().split(/\s+/)[0] || 'there';

@@ -1,3 +1,4 @@
+import { getSiteUrl } from '@/lib/site-url';
 import { NextResponse } from 'next/server';
 import crypto from 'node:crypto';
 import { createServiceClient } from '@/utils/supabase/service';
@@ -48,7 +49,7 @@ export async function POST(request: Request) {
       .insert({ user_id: staffRow.id, token, expires_at: expiresAt });
 
     if (!insertError) {
-      const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? '';
+      const siteUrl = getSiteUrl();
       const resetUrl = `${siteUrl}/portal/reset-password?token=${encodeURIComponent(token)}`;
       // Best-effort — a send failure here still isn't distinguishable to
       // the caller from "no recovery email on file", by design.

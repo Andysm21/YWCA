@@ -1,3 +1,4 @@
+import { getSiteUrl } from '@/lib/site-url';
 import { NextResponse } from 'next/server';
 import { cookies } from 'next/headers';
 import { createClient as createServerClient } from '@/utils/supabase/server';
@@ -50,20 +51,13 @@ export async function POST(request: Request) {
     if (fullName.length > 200) {
       return NextResponse.json({ error: 'Full name must be 200 characters or fewer.' }, { status: 400 });
     }
-    if (!process.env.NEXT_PUBLIC_SITE_URL) {
-      // Fail loudly rather than silently sending an invite link to
-      // "undefined/portal/accept-invite" — that would repeat the exact bug
-      // this route was just fixed for.
-      return NextResponse.json({ error: 'NEXT_PUBLIC_SITE_URL is not set — cannot build a valid invite redirect link' }, { status: 500 });
-    }
-
     // 3. Only past this point do we touch the service-role client — it
     // bypasses RLS entirely, so it must never be reachable without the check
     // above having already passed.
     const serviceClient = createServiceClient();
 
     const { data: invite, error: inviteError } = await serviceClient.auth.admin.inviteUserByEmail(email, {
-      redirectTo: `${process.env.NEXT_PUBLIC_SITE_URL}/portal/accept-invite`,
+      redirectTo: `${getSiteUrl()}/portal/accept-invite`,
     });
     if (inviteError) {
       // Log every field the error object actually carries — .message alone

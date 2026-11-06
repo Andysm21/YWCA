@@ -227,6 +227,14 @@ export async function POST(request: Request) {
   } catch (err) {
     const message = err instanceof Error ? err.message : 'Unexpected server error';
     console.error('[register/payment]', err);
+    // Google auth failures (deleted/revoked OAuth client, expired refresh token) are a
+    // staff-side configuration problem — don't show raw codes like "deleted_client" to guests.
+    if (/deleted_client|invalid_grant|invalid_client|unauthorized_client|GOOGLE_OAUTH|GOOGLE_DRIVE/i.test(message)) {
+      return NextResponse.json(
+        { error: "We couldn't save your files right now. Nothing was lost — please try again in a little while or contact the camp team." },
+        { status: 503 }
+      );
+    }
     return NextResponse.json({ error: message }, { status: 500 });
   }
 }
