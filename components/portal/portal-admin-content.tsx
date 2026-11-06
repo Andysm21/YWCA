@@ -97,7 +97,7 @@ export function PortalAdminContent({ registrations, totalCount, page, pageSize, 
       </div>
 
       {/* Stat cards */}
-      <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
+      <div className="grid grid-cols-2 gap-3 sm:gap-6 lg:grid-cols-4">
         <StatCard icon={Users} label="Total registrations" value={stats.totalCount} sublabel={`${stats.confirmedCount} confirmed`} accent="orange" />
         <StatCard icon={CalendarCheck} label="Spots filled" value={stats.confirmedCount} sublabel={`of ${totalCapacity} capacity`} accent="teal" />
         <StatCard icon={DollarSign} label="Total revenue" value={`EGP ${stats.totalRevenue.toLocaleString()}`} sublabel="from confirmed" accent="gold" />
@@ -129,16 +129,16 @@ export function PortalAdminContent({ registrations, totalCount, page, pageSize, 
       {/* Filters */}
       <div className="mt-12 flex flex-wrap items-center gap-4">
         <h2 className="w-full font-display text-xl font-bold text-foreground">All registrations</h2>
-        <div className="flex items-center gap-2">
+        <div className="flex min-w-0 max-w-full flex-wrap items-center gap-2">
           <span className="text-sm font-semibold text-muted-foreground">Camp:</span>
-          <select value={campFilter} onChange={(e) => updateParams({ camp: e.target.value })} className="rounded-full border border-border/60 bg-card/50 px-4 py-1.5 text-sm font-medium text-foreground outline-none">
+          <select value={campFilter} onChange={(e) => updateParams({ camp: e.target.value })} className="min-w-0 max-w-full rounded-full border border-border/60 bg-card/50 px-4 py-1.5 text-sm font-medium text-foreground outline-none">
             <option value="all">All camps</option>
             {camps.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
           </select>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex min-w-0 max-w-full flex-wrap items-center gap-2">
           <span className="text-sm font-semibold text-muted-foreground">Status:</span>
-          <select value={statusFilter} onChange={(e) => updateParams({ status: e.target.value })} className="rounded-full border border-border/60 bg-card/50 px-4 py-1.5 text-sm font-medium text-foreground outline-none">
+          <select value={statusFilter} onChange={(e) => updateParams({ status: e.target.value })} className="min-w-0 max-w-full rounded-full border border-border/60 bg-card/50 px-4 py-1.5 text-sm font-medium text-foreground outline-none">
             <option value="all">All statuses</option>
             <option value="pending_payment">Pending payment</option>
             <option value="payment_submitted">Payment submitted</option>

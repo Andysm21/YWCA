@@ -219,7 +219,8 @@ export function CampCalendar({
                           <span
                             key={camp.id}
                             className={cn(
-                              'block h-5 truncate px-1.5 text-[10px] font-semibold leading-5 text-white shadow-sm',
+                              'block h-5 whitespace-nowrap px-1.5 text-[10px] font-semibold leading-5 text-white',
+                              label ? 'relative z-10 overflow-visible' : 'overflow-hidden',
                               seasonBar[camp.season],
                               isStart || col === 0 ? 'rounded-l-md' : '-ml-1 pl-2.5',
                               isEnd || col === 6 ? 'rounded-r-md' : '-mr-1'

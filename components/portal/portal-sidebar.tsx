@@ -26,7 +26,7 @@ const superAdminLinks = [
   { label: 'Settings', href: '/portal/super-admin?tab=settings', icon: Settings, tab: 'settings' },
 ];
 
-export function PortalSidebar() {
+export function PortalSidebar({ mobileOpen = false, onMobileClose }: { mobileOpen?: boolean; onMobileClose?: () => void }) {
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const router = useRouter();
@@ -57,14 +57,21 @@ export function PortalSidebar() {
     router.refresh();
   }
 
+  // The collapse mode only applies to the desktop sidebar; the mobile drawer is always full width.
+  const wide = !collapsed || mobileOpen;
+
   return (
+    <>
+    {mobileOpen && <div className="fixed inset-0 z-40 bg-black/60 backdrop-blur-sm lg:hidden" onClick={onMobileClose} />}
     <aside className={cn(
-      'sticky top-0 flex h-screen shrink-0 flex-col border-r border-border/60 bg-card/40 backdrop-blur-sm transition-all duration-200',
-      collapsed ? 'w-[72px]' : 'w-64'
+      'z-50 flex shrink-0 flex-col border-r border-border/60 bg-card transition-all duration-200 lg:bg-card/40 lg:backdrop-blur-sm',
+      'fixed inset-y-0 left-0 h-[100dvh] w-64 lg:sticky lg:top-0 lg:h-screen lg:translate-x-0',
+      mobileOpen ? 'translate-x-0 shadow-2xl' : '-translate-x-full',
+      !wide ? 'lg:w-[72px]' : 'lg:w-64'
     )}>
-      <div className={cn('flex items-center gap-2.5 border-b border-border/60 px-4 py-5', collapsed && 'justify-center px-2')}>
+      <div className={cn('flex items-center gap-2.5 border-b border-border/60 px-4 py-5', !wide && 'justify-center px-2')}>
         <Logo size="sm" className="shrink-0" />
-        {!collapsed && (
+        {!!wide && (
           <div className="min-w-0">
             <p className="truncate font-display text-sm font-bold text-foreground">YWCA Camp</p>
             <p className="truncate text-xs text-muted-foreground">Staff Portal</p>
@@ -80,10 +87,11 @@ export function PortalSidebar() {
             <Link
               key={l.label}
               href={l.href}
-              title={collapsed ? l.label : undefined}
+              onClick={onMobileClose}
+              title={!wide ? l.label : undefined}
               className={cn(
                 'group relative flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-colors',
-                collapsed && 'justify-center px-0',
+                !wide && 'justify-center px-0',
                 active
                   ? 'bg-primary/10 text-primary'
                   : 'text-muted-foreground hover:bg-muted/40 hover:text-foreground'
@@ -91,51 +99,52 @@ export function PortalSidebar() {
             >
               {active && <span className="absolute left-0 top-1/2 h-5 w-1 -translate-y-1/2 rounded-r-full bg-primary" />}
               <l.icon className="h-4 w-4 shrink-0" />
-              {!collapsed && <span className="truncate">{l.label}</span>}
+              {!!wide && <span className="truncate">{l.label}</span>}
             </Link>
           );
         })}
       </nav>
 
       <div className="space-y-1 border-t border-border/60 p-3">
-        <div className={cn('flex items-center gap-1', collapsed ? 'flex-col' : 'justify-between px-1')}>
-          {!collapsed && <span className="text-xs font-medium text-muted-foreground">Theme</span>}
+        <div className={cn('flex items-center gap-1', !wide ? 'flex-col' : 'justify-between px-1')}>
+          {!!wide && <span className="text-xs font-medium text-muted-foreground">Theme</span>}
           <ModeToggle />
         </div>
 
         <Link
           href="/"
-          title={collapsed ? 'Back to site' : undefined}
+          title={!wide ? 'Back to site' : undefined}
           className={cn(
             'flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium text-muted-foreground transition-colors hover:bg-muted/40 hover:text-foreground',
-            collapsed && 'justify-center px-0'
+            !wide && 'justify-center px-0'
           )}
         >
           <Home className="h-4 w-4 shrink-0" />
-          {!collapsed && 'Back to site'}
+          {!!wide && 'Back to site'}
         </Link>
         <button
           onClick={handleLogout}
-          title={collapsed ? 'Sign out' : undefined}
+          title={!wide ? 'Sign out' : undefined}
           className={cn(
             'flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium text-rose-400 transition-colors hover:bg-rose-500/10',
-            collapsed && 'justify-center px-0'
+            !wide && 'justify-center px-0'
           )}
         >
           <LogOut className="h-4 w-4 shrink-0" />
-          {!collapsed && 'Sign out'}
+          {!!wide && 'Sign out'}
         </button>
         <button
           onClick={() => setCollapsed((v) => !v)}
           className={cn(
-            'flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium text-muted-foreground transition-colors hover:bg-muted/40 hover:text-foreground',
-            collapsed && 'justify-center px-0'
+            'hidden w-full lg:flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium text-muted-foreground transition-colors hover:bg-muted/40 hover:text-foreground',
+            !wide && 'justify-center px-0'
           )}
         >
-          {collapsed ? <ChevronsRight className="h-4 w-4 shrink-0" /> : <ChevronsLeft className="h-4 w-4 shrink-0" />}
-          {!collapsed && 'Collapse'}
+          {!wide ? <ChevronsRight className="h-4 w-4 shrink-0" /> : <ChevronsLeft className="h-4 w-4 shrink-0" />}
+          {!!wide && 'Collapse'}
         </button>
       </div>
     </aside>
+    </>
   );
 }

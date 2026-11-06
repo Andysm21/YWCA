@@ -25,7 +25,7 @@ export default async function SeasonAnalyticsPage({ params }: { params: { season
       <h1 className="mt-4 font-display text-3xl font-extrabold text-foreground">{season?.label ?? 'Season'} — analytics</h1>
       <p className="mt-1 text-muted-foreground">Rolled up across all camps in this season.</p>
 
-      <div className="mt-8 grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
+      <div className="mt-8 grid grid-cols-2 gap-3 sm:gap-6 lg:grid-cols-4">
         <StatCard icon={Users} label="Total registrations" value={analytics.totalRegistrations} sublabel="across all camps" accent="orange" />
         <StatCard icon={DollarSign} label="Confirmed revenue" value={`EGP ${analytics.totalConfirmedRevenueEgp.toLocaleString()}`} sublabel="real, verified" accent="teal" />
         <StatCard icon={Clock3} label="Waitlist size" value={analytics.totalWaitlistSize} sublabel="waiting across all camps" accent="gold" />

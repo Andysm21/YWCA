@@ -167,7 +167,7 @@ function OverviewTab({
 }) {
   return (
     <div>
-      <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
+      <div className="grid grid-cols-2 gap-3 sm:gap-6 lg:grid-cols-4">
         <StatCard icon={Users} label="Total registrations" value={stats.totalCount} sublabel={`${stats.confirmedCount} confirmed`} accent="orange" />
         <StatCard icon={CalendarCheck} label="Spots filled" value={stats.confirmedCount} sublabel={`of ${totalCapacity} capacity`} accent="teal" />
         <StatCard icon={DollarSign} label="Total revenue" value={`EGP ${stats.totalRevenue.toLocaleString()}`} sublabel="from confirmed" accent="gold" />
@@ -548,9 +548,9 @@ function CampsTab({
   return (
     <div>
       <div className="mb-4 flex flex-wrap items-center justify-between gap-4">
-        <div className="flex items-center gap-2">
+        <div className="flex min-w-0 max-w-full flex-wrap items-center gap-2">
           <span className="text-sm font-semibold text-muted-foreground">Season:</span>
-          <select value={selectedSeason} onChange={(e) => setSelectedSeason(e.target.value)} className="rounded-full border border-border/60 bg-card/50 px-4 py-1.5 text-sm font-medium text-foreground outline-none">
+          <select value={selectedSeason} onChange={(e) => setSelectedSeason(e.target.value)} className="min-w-0 max-w-full rounded-full border border-border/60 bg-card/50 px-4 py-1.5 text-sm font-medium text-foreground outline-none">
             <option value="all">All seasons</option>
             <option value="summer">Summer</option>
             <option value="winter">Winter</option>
@@ -590,7 +590,7 @@ function CampsTab({
         />
       )}
 
-      <div className="overflow-hidden rounded-2xl border border-border/60 bg-card/50">
+      <div className="overflow-x-auto rounded-2xl border border-border/60 bg-card/50">
         <table className="w-full text-sm">
           <thead>
             <tr className="border-b border-border/60">
@@ -696,13 +696,13 @@ function RegistrationsTab({
   return (
     <div>
       <div className="mb-4 flex flex-wrap items-center justify-between gap-4">
-        <div className="flex items-center gap-2">
+        <div className="flex min-w-0 max-w-full flex-wrap items-center gap-2">
           <span className="text-sm font-semibold text-muted-foreground">Camp:</span>
-          <select value={campFilter} onChange={(e) => updateParams({ camp: e.target.value })} className="rounded-full border border-border/60 bg-card/50 px-4 py-1.5 text-sm font-medium text-foreground outline-none">
+          <select value={campFilter} onChange={(e) => updateParams({ camp: e.target.value })} className="min-w-0 max-w-full rounded-full border border-border/60 bg-card/50 px-4 py-1.5 text-sm font-medium text-foreground outline-none">
             <option value="all">All camps</option>
             {camps.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
           </select>
-          <select value={statusFilter} onChange={(e) => updateParams({ status: e.target.value })} className="rounded-full border border-border/60 bg-card/50 px-4 py-1.5 text-sm font-medium text-foreground outline-none">
+          <select value={statusFilter} onChange={(e) => updateParams({ status: e.target.value })} className="min-w-0 max-w-full rounded-full border border-border/60 bg-card/50 px-4 py-1.5 text-sm font-medium text-foreground outline-none">
             <option value="all">All statuses</option>
             <option value="pending_payment">Pending payment</option>
             <option value="payment_submitted">Payment submitted</option>
@@ -982,7 +982,7 @@ function StaffTab({ staffUsers, onConfirm }: { staffUsers: StaffUser[]; onConfir
 
       <div className="mt-8">
         <h3 className="mb-4 font-display text-lg font-bold text-foreground">Staff accounts</h3>
-        <div className="overflow-hidden rounded-2xl border border-border/60 bg-card/50">
+        <div className="overflow-x-auto rounded-2xl border border-border/60 bg-card/50">
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b border-border/60">

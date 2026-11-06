@@ -30,10 +30,10 @@ export default async function CampAnalyticsPage({ params }: { params: { campId: 
         <ArrowLeft className="h-4 w-4" /> Back to analytics
       </Link>
 
-      <h1 className="mt-4 font-display text-3xl font-extrabold text-foreground">{camp?.name ?? 'Camp'} — analytics</h1>
+      <h1 className="mt-4 font-display text-2xl font-extrabold text-foreground sm:text-3xl">{camp?.name ?? 'Camp'} — analytics</h1>
       <p className="mt-1 text-muted-foreground">Registration, revenue, and waitlist snapshot for this camp.</p>
 
-      <div className="mt-8 grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
+      <div className="mt-8 grid grid-cols-2 gap-3 sm:gap-6 lg:grid-cols-4">
         <StatCard icon={Users} label="Capacity fill rate" value={`${analytics.fillRatePct}%`} sublabel={`${analytics.filledCount} / ${analytics.capacity} filled`} accent="orange" />
         <StatCard icon={Clock3} label="Waitlist size" value={analytics.waitlistSize} sublabel="waiting for a spot" accent="gold" />
         <StatCard icon={DollarSign} label="Confirmed revenue" value={`EGP ${analytics.confirmedRevenueEgp.toLocaleString()}`} sublabel="real, verified" accent="teal" />
