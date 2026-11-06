@@ -3,11 +3,10 @@ import { ArrowLeft, ArrowRight, Calendar, Users, MapPin, Star } from 'lucide-rea
 import { Button } from '@/components/ui/button';
 import { StatusPill } from '@/components/shared/status-pill';
 import { formatDateRange, formatPrice, getStatusLabel, type Camp } from '@/lib/camp-data';
-import { getCampIcon } from '@/lib/icon-map';
+import { Logo } from '@/components/logo';
 import { cn } from '@/lib/utils';
 
 export function CampDetailContent({ camp }: { camp: Camp }) {
-  const Icon = getCampIcon(camp.iconName);
   const a = {
     orange: { bar: 'from-brand-orange to-brand-ember', iconBg: 'bg-brand-orange/15 text-brand-orange', glow: 'from-brand-orange/20' },
     teal: { bar: 'from-brand-navy to-[hsl(228_25%_38%)]', iconBg: 'bg-brand-navy/15 text-brand-navy', glow: 'from-brand-navy/20' },
@@ -30,9 +29,7 @@ export function CampDetailContent({ camp }: { camp: Camp }) {
         <div className="relative p-8 sm:p-12">
           <div className="flex items-start justify-between gap-4">
             <div className="flex items-center gap-4">
-              <div className={cn('flex h-14 w-14 items-center justify-center rounded-2xl', a.iconBg)}>
-                <Icon className="h-7 w-7" />
-              </div>
+              <Logo size="xl" />
               <div>
                 <h1 className="font-display text-3xl font-extrabold text-foreground sm:text-4xl">{camp.name}</h1>
                 <p className="mt-1 text-muted-foreground capitalize">{camp.season} {camp.year}</p>

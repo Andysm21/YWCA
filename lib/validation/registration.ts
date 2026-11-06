@@ -7,6 +7,18 @@
  */
 
 export const GRADE_OPTIONS = ['Grade 3', 'Grade 4', 'Grade 5', 'Grade 6', 'Grade 7', 'Grade 8', 'Grade 9', 'Grade 10', 'Grade 11', 'Grade 12', 'UNI'] as const;
+const grades = (from: number, to: number) => GRADE_OPTIONS.filter((g) => g !== 'UNI' && Number(g.slice(6)) >= from && Number(g.slice(6)) <= to);
+
+/** Grades a camper may pick, by camp type name (Kids = up to Grade 6, Teen/Girls/Boys = 7-12, Uni = UNI). */
+export function gradeOptionsForCamp(campName: string): readonly string[] {
+  const n = campName.toLowerCase();
+  if (n.includes('uni')) return ['UNI'];
+  if (n.includes('leader')) return [...grades(10, 12), 'UNI'];
+  if (n.includes('teen') || n.includes('girls') || n.includes('boys')) return grades(7, 12);
+  if (n.includes('kids')) return grades(3, 6);
+  return GRADE_OPTIONS;
+}
+
 export const TSHIRT_SIZES = ['XS', 'S', 'M', 'L', 'XL', 'XXL'] as const;
 
 const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;

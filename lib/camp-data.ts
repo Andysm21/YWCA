@@ -178,7 +178,6 @@ export const packingCategories = [
       'Book to read',
       'Camera (disposable or inexpensive)',
       'Musical instrument (if you play one)',
-      'Deck of cards or small travel games',
       'Reusable shopping bag for dirty laundry',
     ],
   },

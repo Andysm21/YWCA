@@ -7,7 +7,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardFooter, CardHeader } from '@/components/ui/card';
 import { StatusPill } from '@/components/shared/status-pill';
 import { formatDateRange, formatPrice, getStatusLabel, type Camp } from '@/lib/camp-data';
-import { getCampIcon } from '@/lib/icon-map';
+import { Logo } from '@/components/logo';
 import { cn } from '@/lib/utils';
 
 const accentClasses: Record<Camp['accent'], { ring: string; glow: string; iconBg: string; bar: string }> = {
@@ -34,7 +34,6 @@ const accentClasses: Record<Camp['accent'], { ring: string; glow: string; iconBg
 export function CampCard({ camp }: { camp: Camp }) {
   const a = accentClasses[camp.accent];
   const full = camp.displayStatus === 'waitlist';
-  const Icon = getCampIcon(camp.iconName);
 
   return (
     <Card
@@ -48,9 +47,7 @@ export function CampCard({ camp }: { camp: Camp }) {
 
       <CardHeader className="flex flex-row items-start justify-between gap-3 pb-4 pt-5">
         <div className="flex items-center gap-3">
-          <div className={cn('flex h-11 w-11 items-center justify-center rounded-xl', a.iconBg)}>
-            <Icon className="h-5 w-5" />
-          </div>
+          <Logo size="lg" />
           <div>
             <h3 className="font-display text-lg font-bold leading-tight text-foreground">{camp.name}</h3>
             <p className="text-sm text-muted-foreground">{camp.ageRange} years</p>

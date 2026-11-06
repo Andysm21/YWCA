@@ -12,7 +12,7 @@ export default async function CalendarPage() {
       <PageHeader
         eyebrow="Camp calendar"
         title={<>The full <span className="gradient-text-navy">camp year</span></>}
-        subtitle="Switch between seasons and years, jump to any month, and click a camp for details."
+        subtitle="Jump between the months that have camps and click any camp for details and registration."
       />
       <CalendarContent camps={camps} />
     </>

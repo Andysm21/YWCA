@@ -4,7 +4,7 @@ import { sendPendingPaymentEmail, sendWaitlistEmail } from '@/lib/email';
 import { recordEmailResult } from '@/lib/registration-email';
 import { getMeetingPoints } from '@/lib/queries/site-settings';
 import { isRateLimited } from '@/lib/rate-limit';
-import { validateRegistrationInput } from '@/lib/validation/registration';
+import { validateRegistrationInput, gradeOptionsForCamp } from '@/lib/validation/registration';
 
 export async function POST(request: Request) {
   const ip = request.headers.get('x-forwarded-for')?.split(',')[0]?.trim() ?? 'unknown';
@@ -42,6 +42,12 @@ export async function POST(request: Request) {
   if (campError) return NextResponse.json({ error: campError.message }, { status: 500 });
   if (!camp || camp.status === 'closed') {
     return NextResponse.json({ error: 'This camp is no longer accepting registrations.' }, { status: 409 });
+  }
+
+  const campTypeRel = camp.camp_types as { name: string } | { name: string }[] | null;
+  const campTypeName = (Array.isArray(campTypeRel) ? campTypeRel[0]?.name : campTypeRel?.name) ?? '';
+  if (!gradeOptionsForCamp(campTypeName).includes(String(body.academicYear).trim())) {
+    return NextResponse.json({ error: `That grade isn't available for ${campTypeName || 'this camp'}.` }, { status: 400 });
   }
 
   const { count: filledCount, error: countError } = await supabase

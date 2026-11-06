@@ -119,7 +119,7 @@ export function HomeCalendar({ seasons }: { seasons: Season[] }) {
           <p className="mt-4 text-lg text-muted-foreground text-pretty">Every camp, every season, mapped out. Click any camp to see details and register.</p>
         </Reveal>
         <Reveal delay={120} className="mt-12">
-          <CampCalendar camps={allCamps} initialMonth={new Date('2026-06-01')} />
+          <CampCalendar camps={allCamps} />
         </Reveal>
       </div>
     </section>

@@ -8,8 +8,10 @@ export function PackingContent() {
   return (
     <div className="mx-auto max-w-5xl px-6 py-16 lg:px-8">
       <div className="mb-10 flex justify-center print:hidden">
-        <Button onClick={() => window.print()} size="lg" className="rounded-full glow-orange">
-          <Download className="mr-2 h-4 w-4" /> Download as PDF
+        <Button asChild size="lg" className="rounded-full glow-orange">
+          <a href="/YWCA-Camp-Packing-List.pdf" download="YWCA-Camp-Packing-List.pdf">
+            <Download className="mr-2 h-4 w-4" /> Download packing list (PDF)
+          </a>
         </Button>
       </div>
 

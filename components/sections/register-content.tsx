@@ -10,7 +10,7 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { StepProgress } from '@/components/shared/step-progress';
 import { formatDateRange, formatPrice, type Camp } from '@/lib/camp-data';
 import { cn } from '@/lib/utils';
-import { GRADE_OPTIONS, TSHIRT_SIZES } from '@/lib/validation/registration';
+import { gradeOptionsForCamp, TSHIRT_SIZES } from '@/lib/validation/registration';
 
 type Step1 = {
   camperName: string;
@@ -45,6 +45,7 @@ const CAMP_RULES = [
   'Respect personal privacy and boundaries at all times. Private parts must never be touched, exposed, or discussed inappropriately by anyone.',
   'No card games, board games, electronics of any kind (mobiles, smart watches, laptops, tablets, MP3 players, gaming consoles, etc.).',
   'No jewelry or expensive accessories.',
+  'No snacks! Any sneaky snacks will be confiscated and sent on a one-way trip to the leaders\' snack stash. 🍫 Camp meals are plenty, we promise!',
 ];
 
 const REGISTRATION_STEPS = [
@@ -56,6 +57,7 @@ const REGISTRATION_STEPS = [
 
 export function RegisterContent({ camp }: { camp: Camp }) {
   const [step, setStep] = React.useState<1 | 2 | 3 | 4 | 5>(1);
+  const gradeOptions = React.useMemo(() => gradeOptionsForCamp(camp.name), [camp.name]);
   const [rulesAccepted, setRulesAccepted] = React.useState(false);
   const [submitting, setSubmitting] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);
@@ -112,7 +114,7 @@ export function RegisterContent({ camp }: { camp: Camp }) {
             </div>
             <p className="text-sm text-muted-foreground">Please read the rules carefully. They apply to every camper at every YWCA Camp session.</p>
             <div className="rounded-xl border border-border/60 bg-background/40 p-5">
-              <p className="mb-3 flex items-center gap-2 font-display text-base font-bold text-foreground"><Ban className="h-4 w-4 text-rose-400" /> Don&apos;ts</p>
+              <p className="mb-3 flex items-center gap-2 font-display text-base font-bold text-foreground"><Ban className="h-4 w-4 text-rose-400" /> Don&apos;t</p>
               <ul className="list-disc space-y-2 pl-5 text-sm text-foreground/90">
                 {CAMP_RULES.map((rule) => <li key={rule}>{rule}</li>)}
               </ul>
@@ -200,7 +202,7 @@ export function RegisterContent({ camp }: { camp: Camp }) {
                 <Label htmlFor="academicYear">Academic year *</Label>
                 <select id="academicYear" required className="h-10 w-full rounded-xl border border-input bg-background/50 px-3 text-sm" value={step1.academicYear} onChange={(e) => setStep1({ ...step1, academicYear: e.target.value })}>
                   <option value="" disabled>Select...</option>
-                  {GRADE_OPTIONS.map((o) => <option key={o} value={o}>{o}</option>)}
+                  {gradeOptions.map((o) => <option key={o} value={o}>{o}</option>)}
                 </select>
               </div>
               <div className="space-y-2">
