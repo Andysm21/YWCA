@@ -29,10 +29,11 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: 'Full name must be 200 characters or fewer.' }, { status: 400 });
   }
   if (!USERNAME_PATTERN.test(usernameRaw)) {
-    return NextResponse.json({ error: 'Username must be 3-30 characters: letters, numbers, and underscores only.' }, { status: 400 });
+    return NextResponse.json({ error: 'Username must be 3-30 characters: letters and numbers, with dots or underscores between them (e.g. jane.doe).' }, { status: 400 });
   }
-  if (!EMAIL_PATTERN.test(recoveryEmail)) {
-    return NextResponse.json({ error: 'A valid recovery email is required' }, { status: 400 });
+  // Recovery email is optional — it only enables password-reset emails.
+  if (recoveryEmail && !EMAIL_PATTERN.test(recoveryEmail)) {
+    return NextResponse.json({ error: 'That recovery email is not valid' }, { status: 400 });
   }
   if (password.length < MIN_PASSWORD_LENGTH) {
     return NextResponse.json({ error: `Password must be at least ${MIN_PASSWORD_LENGTH} characters.` }, { status: 400 });
@@ -85,7 +86,7 @@ export async function POST(request: Request) {
       role: 'admin',
       status: 'active',
       username,
-      recovery_email: recoveryEmail,
+      recovery_email: recoveryEmail || null,
       created_by: auth.userId,
     })
     .select('id, email, full_name, role, status, username, recovery_email, created_at')

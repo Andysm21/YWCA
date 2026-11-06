@@ -959,11 +959,11 @@ function StaffTab({ staffUsers, onConfirm }: { staffUsers: StaffUser[]; onConfir
               </div>
               <div className="space-y-2">
                 <Label htmlFor="directUsername">Username</Label>
-                <Input id="directUsername" required value={directUsername} onChange={(e) => setDirectUsername(e.target.value)} className="rounded-xl bg-background/50" placeholder="jane_admin" pattern="[a-zA-Z0-9_]{3,30}" title="3-30 characters: letters, numbers, underscores only" />
+                <Input id="directUsername" required value={directUsername} onChange={(e) => setDirectUsername(e.target.value)} className="rounded-xl bg-background/50" placeholder="jane.doe" pattern="(?=.{3,30}$)[a-zA-Z0-9]+([._][a-zA-Z0-9]+)*" title="3-30 characters: letters and numbers, with dots or underscores between them" />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="directRecoveryEmail">Recovery email</Label>
-                <Input id="directRecoveryEmail" type="email" required value={directRecoveryEmail} onChange={(e) => setDirectRecoveryEmail(e.target.value)} className="rounded-xl bg-background/50" placeholder="jane@personal-email.com" />
+                <Label htmlFor="directRecoveryEmail">Recovery email (optional)</Label>
+                <Input id="directRecoveryEmail" type="email" value={directRecoveryEmail} onChange={(e) => setDirectRecoveryEmail(e.target.value)} className="rounded-xl bg-background/50" placeholder="jane@personal-email.com" />
               </div>
               <div className="space-y-2">
                 <Label htmlFor="directPassword">Password</Label>

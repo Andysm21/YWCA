@@ -9,7 +9,8 @@ import 'server-only';
  */
 const SYNTHETIC_EMAIL_DOMAIN = 'staff.internal.invalid';
 
-export const USERNAME_PATTERN = /^[a-zA-Z0-9_]{3,30}$/;
+/** 3-30 chars: letters/numbers, with single dots or underscores allowed between them (e.g. jane.doe, jane_doe). */
+export const USERNAME_PATTERN = /^(?=.{3,30}$)[a-zA-Z0-9]+(?:[._][a-zA-Z0-9]+)*$/;
 export const MIN_PASSWORD_LENGTH = 8;
 
 /** Lowercased so username lookups/uniqueness are case-insensitive without a citext extension. */
