@@ -121,14 +121,19 @@ export function getStatusLabel(status: DisplayStatus): string {
 }
 
 export const faqItems: { question: string; answer: string; link?: { href: string; label: string } }[] = [
-  { question: 'Where is the camp located?', answer: 'YWCA Camp is held in Ras Sedr, a coastal town on the Gulf of Suez in South Sinai, Egypt. The site features beach access, desert landscapes, and open-air activity areas — a perfect outdoor setting for a camping experience.' },
-  { question: 'What ages can attend camp?', answer: 'We offer camps for ages 7–24. Kids Camps serve ages 7–11, Girls and Boys Camps serve ages 12–16, Uni Camp serves ages 18–24, and Leadership Camp serves ages 16–22. Check each camp\'s page for specific age requirements.' },
-  { question: 'How long is each camp session?', answer: 'Each camp runs for 7 days and 6 nights, from Sunday to Sunday. Check-in is on the first day in the early afternoon, and departure is on the final day after the closing ceremony.' },
+  { question: 'What is The Camp?', answer: 'A fun-filled, character-building experience. We live a simple lifestyle, using simple tools creatively for plenty of fun. Team-based activities teach acceptance of others and teamwork, and every camp has a theme that is presented and emphasized throughout The Camp.' },
+  { question: 'Where is the camp located?', answer: 'The Camp is at Paradise, Ras Sudr, a closed and secure compound 30 minutes away from the city. It has 13 huts, a sitting room, a dining room, a pool, a sand playing field and a grass playing field. The Camp has been at this campsite since 2019.' },
+  { question: 'What ages can attend camp?', answer: 'Each camp is for a specific age group. Check each camp\'s page for its age range.' },
+  { question: 'When do the camps run?', answer: 'The dates of every camp are on its page and on the calendar.', link: { href: '/calendar', label: 'View the calendar' } },
   { question: 'What is included in the camp fee?', answer: 'The fee covers meals, accommodation, activities, equipment, a camp t-shirt, and supervision by our volunteer leader team. Transportation to and from the camp is also included. If a particular camp requires any extra fees, we will contact the parents directly.' },
-  { question: 'Who are the camp leaders?', answer: 'Our leaders are a diverse volunteer team of former campers. They range from experienced older leaders with over a decade of camp experience to newer younger leaders stepping into their first counseling role. All leaders complete our Leadership Camp training program.' },
+  { question: 'Who are the camp leaders?', answer: 'We are a diverse group of former campers who volunteer to direct and lead The Camp.' },
+  { question: 'Where are the meeting points?', answer: 'At 7 a.m. in Mohandessin: Mostafa Mahmoud Mosque. At 8 a.m. in Tagamo3: in front of Gate 1 - Rehab.' },
+  { question: 'Which ID do campers need?', answer: 'Campers below 15 years need to submit an Egyptian form of ID, either a birth certificate or a passport. If it is not available, please inform your camp director. Campers 15 years and above must have their Egyptian IDs with them.' },
   { question: 'What should my child pack?', answer: 'We provide a complete packing list covering clothing, toiletries and other essentials. You can view it online or download it as a PDF.', link: { href: '/packing', label: 'View the packing list' } },
-  { question: 'Is the camp safe?', answer: 'Safety is our top priority. We maintain a leader-to-camper ratio of at least 1:6 and have a first-aid station on site.' },
-  { question: 'What is the refund policy?', answer: 'Full refunds are available up to 30 days before the camp start date. Between 30 and 14 days, a 50% refund is available. Within 14 days, the fee is non-refundable. In case of medical emergencies, we review refund requests on a case-by-case basis.' },
+  { question: 'Is there a canteen?', answer: 'Yes. The canteen offers snacks once a day, with an average budget of 500 EGP.' },
+  { question: 'What does a day at camp look like?', answer: 'A day starts with waking up and morning sports at 8:00 AM, and includes breakfast, hut cleaning, songs and devotion, games, lunch and rest, crafts, dinner, and a night game at 9:00 PM. See the full schedule on our About page.', link: { href: '/about#a-day-at-camp', label: 'See a day at camp' } },
+  { question: 'Can parents visit or call?', answer: 'Parents cannot visit, and parents cannot call campers directly. Parents\' calls are accepted daily in a specific time set by the director. Two leaders are responsible for taking these calls.' },
+  { question: 'What about medical attention and emergencies?', answer: 'We always have leaders who are doctors or pharmacists in the camp and/or on call, and we have a well-stocked pharmacy and first-aid kit. For minor issues (low fever, mild diarrhea, etc.) we inform and consult parents and then administer medication. In case of emergencies, there is a hospital nearby. We always inform parents of any medical emergencies.' },
   { question: 'How do I register my child?', answer: 'Visit our Register page and choose the camp session. First read the camp rules and agree to them, then read the registration instructions and fill in the camper and guardian details. After you submit the form, you will receive an email with a payment link. Your registration is only complete, and your spot secured, once you pay the full amount through that link and upload a screenshot as proof of payment. Our team then confirms your spot by email. If these steps are not completed, the registration stays pending and a spot is not guaranteed.' },
 ];
 
@@ -177,13 +182,11 @@ export const packingCategories = [
   },
 ];
 
+// Source: "The Camp - Parents Info Session - Summer 2026" (slides 3, 6, 7).
 export const historyTimeline = [
-  { year: '2008', title: 'The First Camp', description: 'YWCA Camp was founded with a single summer session for 30 kids on the Ras Sedr coast. The vision: character-building through outdoor adventure.' },
-  { year: '2012', title: 'Winter Season Added', description: 'Due to growing demand, a Winter season was introduced with Kids Camp and Teen Camp, taking advantage of Egypt\'s mild winter weather.' },
-  { year: '2015', title: 'Leadership Camp Launches', description: 'The capstone Leadership Camp was created to train the next generation of counselors — former campers returning as volunteer leaders.' },
-  { year: '2018', title: 'Eight Summer Camps', description: 'The summer program expanded to eight sessions, adding Girls Camp, Uni Camp, and a fourth Kids Camp to serve more age groups.' },
-  { year: '2022', title: 'Sustainability Initiative', description: 'Camp committed to a healthy, sustainable, simplistic lifestyle — solar power, local food sourcing, and a waste-reduction program.' },
-  { year: '2026', title: 'Today', description: 'YWCA Camp now serves over 600 campers per year across two seasons, with a volunteer team of 32 former campers. The mission remains the same: character, teamwork, and leadership through immersive outdoor experiences.' },
+  { year: '1940s', title: 'Camps begin', description: 'YWCA camps started around the 1940s.' },
+  { year: '1950s', title: 'El-Mandara, Alexandria', description: 'Camps have been held in El-Mandara, Alexandria since the 1950s.' },
+  { year: '2019', title: 'New campsite', description: 'The Camp moved to its new campsite: Paradise, Ras Sudr.' },
 ];
 
 export function formatDateRange(start: string, end: string) {

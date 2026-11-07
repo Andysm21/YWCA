@@ -68,7 +68,7 @@ export function CampDetailContent({ camp }: { camp: Camp }) {
           </Link>
         </Button>
         <div className="mt-4 flex items-center gap-2 text-xs text-muted-foreground">
-          <MapPin className="h-3.5 w-3.5" /> Ras Sedr, South Sinai, Egypt
+          <MapPin className="h-3.5 w-3.5" /> Paradise, Ras Sudr, Egypt
         </div>
       </div>
     </div>

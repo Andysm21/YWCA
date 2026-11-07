@@ -1083,7 +1083,7 @@ function SettingsTab() {
         <div className="grid gap-4 sm:grid-cols-2">
           <div className="space-y-2"><Label>Email</Label><Input defaultValue="hello@ywcacamp.org" className="rounded-xl bg-background/50" /></div>
           <div className="space-y-2"><Label>Phone</Label><Input defaultValue="+20 100 000 0000" className="rounded-xl bg-background/50" /></div>
-          <div className="space-y-2 sm:col-span-2"><Label>Address</Label><Input defaultValue="Ras Sedr, South Sinai, Egypt" className="rounded-xl bg-background/50" /></div>
+          <div className="space-y-2 sm:col-span-2"><Label>Address</Label><Input defaultValue="Paradise, Ras Sudr, Egypt" className="rounded-xl bg-background/50" /></div>
         </div>
       </div>
 

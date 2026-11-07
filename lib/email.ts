@@ -131,7 +131,7 @@ function wrapEmailHtml(bodyHtml: string, signOffHtml?: string): string {
           <table role="presentation" width="100%" style="max-width: 560px; background: #ffffff; border-radius: 16px; overflow: hidden; border-collapse: collapse;">
             <tr>
               <td style="background: linear-gradient(135deg, ${BRAND.orange}, #c94f1f); padding: 28px 32px; text-align: center;">
-                <span style="display: inline-block; background: #ffffff; border-radius: 16px; padding: 8px 10px;"><img src="${getEmailAssetBase()}/logo.png" alt="YWCA Camp" width="64" style="display: block; height: auto; border: 0;" /></span>
+                <span style="display: inline-block; background: #ffffff; border-radius: 16px; padding: 8px 12px;"><img src="${getEmailAssetBase()}/ywca-logo.png" alt="YWCA" width="44" style="display: inline-block; vertical-align: middle; height: auto; border: 0;" /><img src="${getEmailAssetBase()}/logo.png" alt="The Camp" width="64" style="display: inline-block; vertical-align: middle; height: auto; border: 0; margin-left: 8px;" /></span>
                 <p style="margin: 8px 0 0; color: #ffffff; font-weight: 700; font-size: 18px; letter-spacing: 0.02em;">YWCA Camp</p>
               </td>
             </tr>
@@ -144,7 +144,7 @@ function wrapEmailHtml(bodyHtml: string, signOffHtml?: string): string {
             </tr>
             <tr>
               <td style="padding: 20px 32px; background: #f5f0e8; text-align: center;">
-                <p style="margin: 0; color: #8a8478; font-size: 12px;">YWCA Camp &middot; Ras Sedr, South Sinai, Egypt</p>
+                <p style="margin: 0; color: #8a8478; font-size: 12px;">YWCA Camp &middot; Paradise, Ras Sudr, Egypt</p>
               </td>
             </tr>
           </table>
@@ -170,9 +170,10 @@ const LOCATION_URL = 'https://ywcacampegypt.com/location';
 
 const EMAIL_FONT = "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif";
 
-/** Light-wordmark transparent logo hosted on our own public site (mail clients can only load public https images). */
+/** YWCA triangle + camp logo on a white chip (transparent PNGs hosted on our public site; mail clients can only load public https images). */
 function heroLogoHtml(): string {
-  return `<img src="${getEmailAssetBase()}/logo-light.png" alt="YWCA Camp" width="110" style="display:block; margin:0 auto; height:auto; border:0;" />`;
+  const base = getEmailAssetBase();
+  return `<span style="display:inline-block; background-color:#ffffff; border-radius:18px; padding:12px 18px;"><img src="${base}/ywca-logo.png" alt="YWCA" width="54" style="display:inline-block; vertical-align:middle; height:auto; border:0;" /><img src="${base}/logo.png" alt="The Camp" width="82" style="display:inline-block; vertical-align:middle; height:auto; border:0; margin-left:10px;" /></span>`;
 }
 
 type EmailShellOptions = {
@@ -227,7 +228,7 @@ ${opts.contentHtml}
 <tr>
 <td align="center" bgcolor="#F8F4EC" style="background-color:#F8F4EC; padding:22px 28px;">
 <p style="margin:0 0 4px; font-size:13px; color:#6B6E80;">Kind regards, <strong style="color:#1B1F3A;">YWCA Camp Team</strong></p>
-<p style="margin:0; font-size:12px; color:#9A9CAD;">Ras Sedr, South Sinai, Egypt</p>
+<p style="margin:0; font-size:12px; color:#9A9CAD;">Paradise, Ras Sudr, Egypt</p>
 </td>
 </tr>
 

@@ -17,19 +17,26 @@ export type LogoSize = keyof typeof SIZES;
 // `variant` is kept for API compatibility with existing callers.
 export type LogoVariant = 'default' | 'inverted';
 
+// YWCA triangle mark (public/ywca-logo.png, 257x216), shown next to the camp mark.
+const YWCA_RATIO = 257 / 216;
+
 export function Logo({
   size = 'md',
   className,
   priority = false,
+  ywca = true,
 }: {
   size?: LogoSize;
   variant?: LogoVariant;
   className?: string;
   priority?: boolean;
+  /** Show the YWCA triangle next to the camp mark (default). */
+  ywca?: boolean;
 }) {
   const px = SIZES[size];
-  return (
-    <div className={cn('relative shrink-0', className)} style={{ width: px, height: px }}>
+  const triH = Math.round(px * 0.78);
+  const campMark = (
+    <div className="relative shrink-0" style={{ width: px, height: px }}>
       <Image
         src="/logo.png"
         alt="YWCA Camp Egypt"
@@ -47,6 +54,16 @@ export function Logo({
         priority={priority}
         sizes={`${px}px`}
       />
+    </div>
+  );
+
+  if (!ywca) return <div className={cn('shrink-0', className)}>{campMark}</div>;
+
+  return (
+    <div className={cn('flex shrink-0 items-center', className)} style={{ gap: Math.round(px * 0.08) }}>
+      {/* eslint-disable-next-line @next/next/no-img-element */}
+      <img src="/ywca-logo.png" alt="YWCA" width={Math.round(triH * YWCA_RATIO)} height={triH} style={{ width: Math.round(triH * YWCA_RATIO), height: triH }} className="shrink-0 object-contain" />
+      {campMark}
     </div>
   );
 }

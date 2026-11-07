@@ -12,8 +12,8 @@ export default async function GalleryPage() {
     <>
       <PageHeader
         eyebrow="Camp life"
-        title={<>Moments from <span className="gradient-text-mix">Ras Sedr</span></>}
-        subtitle="Beach Olympics, campfire nights, desert treks and team challenges — a glimpse of life at camp. Click any photo to enlarge."
+        title={<>Moments from <span className="gradient-text-mix">The Camp</span></>}
+        subtitle="A glimpse of life at camp. Click any photo to enlarge."
       />
       <div className="mx-auto max-w-7xl px-6 py-16 lg:px-8">
         <GalleryMasonry images={images} />

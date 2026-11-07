@@ -12,8 +12,8 @@ import type { Season } from '@/lib/camp-data';
 import type { GalleryImageRow } from '@/lib/queries/gallery';
 
 const marqueeItems = [
-  'Beach Olympics', 'Campfire Nights', 'Leadership Labs', 'Desert Treks',
-  'Team Challenges', 'Starlit Walks', 'Character Building', 'Red Sea Sunsets',
+  'Character building', 'Leadership and teamwork', 'Simplicity', 'Creativity',
+  'Independence', 'Team-based activities', 'Fun-filled', 'Body, Mind and Spirit',
 ];
 
 export function HomeHero() {
@@ -33,18 +33,17 @@ export function HomeHero() {
               <span className="absolute inline-flex h-full w-full animate-pulse-ring rounded-full bg-primary" />
               <span className="relative inline-flex h-2.5 w-2.5 rounded-full bg-primary" />
             </span>
-            Summer 2026 registration is open
+            The Camp — by the YWCA
           </div>
 
           <h1 className="mt-8 max-w-5xl font-display text-5xl font-extrabold leading-[1.05] tracking-tight text-foreground text-balance sm:text-6xl lg:text-7xl animate-fade-up">
-            Where character meets{' '}
-            <span className="gradient-text-mix">adventure</span> on the Red Sea.
+            A fun-filled,{' '}
+            <span className="gradient-text-mix">character-building</span> experience.
           </h1>
 
           <p className="mt-6 max-w-2xl text-lg leading-relaxed text-muted-foreground text-pretty sm:text-xl animate-fade-up [animation-delay:80ms]">
-            A fun-filled character building camping experience in Ras Sedr, Egypt.
-            Team-based games, real friendships, and a healthy, sustainable lifestyle —
-            for kids, teens, and young leaders.
+            A simple lifestyle, creative use of simple tools for plenty of fun, and team-based
+            activities that teach acceptance of others and teamwork — at Paradise, Ras Sudr.
           </p>
 
           <div className="mt-10 flex flex-col gap-3 sm:flex-row sm:items-center animate-fade-up [animation-delay:160ms]">
@@ -58,10 +57,10 @@ export function HomeHero() {
 
           <dl className="mt-16 grid w-full max-w-3xl grid-cols-2 gap-6 border-t border-border/40 pt-8 sm:grid-cols-4 animate-fade-up [animation-delay:240ms]">
             {[
-              { icon: CalendarCheck, value: '2', label: 'Seasons / year' },
-              { icon: Users, value: '10', label: 'Camps in 2026' },
-              { icon: MapPin, value: 'Ras Sedr', label: 'Red Sea, Egypt' },
-              { icon: Users, value: '32', label: 'Volunteer leaders' },
+              { icon: CalendarCheck, value: '1940s', label: 'YWCA camps began' },
+              { icon: MapPin, value: 'Ras Sudr', label: 'Paradise campsite' },
+              { icon: Users, value: 'Volunteer', label: 'Former-camper leaders' },
+              { icon: Tent, value: '13', label: 'Huts on site' },
             ].map((s) => (
               <div key={s.label} className="flex flex-col items-center gap-1.5 sm:items-start">
                 <s.icon className="h-5 w-5 text-primary" />
@@ -93,7 +92,7 @@ export function HomeSeasonExplorer({ seasons }: { seasons: Season[] }) {
         <Reveal className="mx-auto max-w-2xl text-center">
           <p className="text-sm font-semibold uppercase tracking-[0.18em] text-primary">Explore the seasons</p>
           <h2 className="mt-3 font-display text-4xl font-extrabold tracking-tight text-foreground sm:text-5xl">Find the right camp</h2>
-          <p className="mt-4 text-lg text-muted-foreground text-pretty">Two seasons, ten camps — each tailored to an age group and built around teamwork, character and the outdoors.</p>
+          <p className="mt-4 text-lg text-muted-foreground text-pretty">Choose a season and find the camp for your age group.</p>
         </Reveal>
         <Reveal delay={120} className="mt-12">
           <SeasonTabs seasons={seasons} defaultSeason="summer" />
@@ -128,7 +127,7 @@ export function HomeCalendar({ seasons }: { seasons: Season[] }) {
 
 export function HomeHighlights() {
   const cards = [
-    { icon: Sparkles, title: 'First time camper?', body: 'Everything you need to know — what to pack, a typical day, and how we keep campers safe.', cta: 'Read the guide', href: '/packing' },
+    { icon: Sparkles, title: 'First time camper?', body: 'Everything you need to know — what to pack for camp.', cta: 'Read the guide', href: '/packing' },
   ];
   return (
     <section className="relative py-16 sm:py-20">
@@ -155,7 +154,7 @@ export function HomeGalleryTeaser({ images }: { images: GalleryImageRow[] }) {
         <Reveal className="flex flex-col items-start justify-between gap-4 sm:flex-row sm:items-end">
           <div className="max-w-xl">
             <p className="text-sm font-semibold uppercase tracking-[0.18em] text-primary">Camp life</p>
-            <h2 className="mt-3 font-display text-4xl font-extrabold tracking-tight text-foreground sm:text-5xl">Moments from Ras Sedr</h2>
+            <h2 className="mt-3 font-display text-4xl font-extrabold tracking-tight text-foreground sm:text-5xl">Moments from The Camp</h2>
           </div>
           <Button asChild variant="ghost" className="rounded-full text-muted-foreground hover:text-foreground">
             <Link href="/gallery">View Full Gallery<ArrowRight className="ml-1.5 h-4 w-4" /></Link>

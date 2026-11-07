@@ -18,13 +18,13 @@ const display = Bricolage_Grotesque({
 
 export const metadata: Metadata = {
   metadataBase: new URL('https://ywcacamp.org'),
-  title: 'YWCA Camp — A Character-Building Camping Experience in Ras Sedr',
+  title: 'The Camp by the YWCA — A Fun-Filled, Character-Building Experience',
   description:
-    'A fun-filled character building camping experience on the Red Sea coast. Summer & Winter seasons for kids, teens, and young leaders. Register now.',
+    'The Camp - by the YWCA. A fun-filled, character-building experience at Paradise, Ras Sudr, Egypt. Register now.',
   openGraph: {
-    title: 'YWCA Camp — Ras Sedr, Egypt',
+    title: 'The Camp by the YWCA — Ras Sudr, Egypt',
     description:
-      'A fun-filled character building camping experience that promotes a healthy, sustainable, simplistic lifestyle.',
+      'A fun-filled, character-building experience with a simplistic lifestyle and team-based activities.',
   },
 };
 

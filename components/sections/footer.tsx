@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { Facebook, Instagram, Twitter, Mail, MapPin, Phone } from 'lucide-react';
+import { Facebook, Instagram, Twitter, MapPin } from 'lucide-react';
 import { Logo } from '@/components/logo';
 
 const nav = {
@@ -21,8 +21,8 @@ export function Footer() {
               <span className="font-display text-xl font-bold tracking-tight text-foreground">YWCA Camp</span>
             </Link>
             <p className="mt-4 max-w-xs text-sm leading-relaxed text-muted-foreground">
-              A fun-filled character building camping experience that promotes a
-              healthy, sustainable, simplistic lifestyle.
+              The Camp - by the YWCA. A fun-filled, character-building experience
+              with a simplistic lifestyle and team-based activities.
             </p>
             <div className="mt-6 flex items-center gap-3">
               {[Facebook, Instagram, Twitter].map((Icon, i) => (
@@ -49,11 +49,9 @@ export function Footer() {
 
         <div className="mt-12 flex flex-col gap-4 rounded-2xl border border-border/60 bg-card/40 p-6 sm:flex-row sm:items-center sm:justify-between">
           <div className="flex flex-col gap-3 sm:flex-row sm:gap-8">
-            <span className="inline-flex items-center gap-2 text-sm text-muted-foreground"><MapPin className="h-4 w-4 text-primary" /> Ras Sedr, South Sinai, Egypt</span>
-            <a href="mailto:hello@ywcacamp.org" className="inline-flex items-center gap-2 text-sm text-muted-foreground transition-colors hover:text-primary"><Mail className="h-4 w-4 text-primary" /> hello@ywcacamp.org</a>
-            <a href="tel:+201000000000" className="inline-flex items-center gap-2 text-sm text-muted-foreground transition-colors hover:text-primary"><Phone className="h-4 w-4 text-primary" /> +20 100 000 0000</a>
+            <span className="inline-flex items-center gap-2 text-sm text-muted-foreground"><MapPin className="h-4 w-4 text-primary" /> Paradise, Ras Sudr, Egypt</span>
           </div>
-          <p className="text-xs text-muted-foreground">© {new Date().getFullYear()} YWCA Camp. Built with care in Egypt.</p>
+          <p className="text-xs text-muted-foreground">© {new Date().getFullYear()} YWCA Camp. </p>
         </div>
       </div>
     </footer>
