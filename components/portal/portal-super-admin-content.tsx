@@ -41,7 +41,8 @@ const statusBadge: Record<string, string> = {
 
 type CampBreakdown = { campId: string; name: string; slug: string; capacity: number; total: number; confirmed: number; revenue: number };
 
-type Tab = 'overview' | 'seasons' | 'camps' | 'registrations' | 'staff' | 'content' | 'settings';
+const TABS = ['overview', 'seasons', 'camps', 'registrations', 'staff', 'content', 'settings'] as const;
+type Tab = (typeof TABS)[number];
 
 type Props = {
   siteSettings: PublicSiteSettings;
@@ -69,11 +70,13 @@ type Props = {
 export function PortalSuperAdminContent(props: Props) {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const [tab, setTab] = React.useState<Tab>((searchParams.get('tab') as Tab) || 'overview');
+  // The URL is the single source of truth for the active tab, so sidebar links
+  // (which only change ?tab=) and the in-page tab bar always stay in sync.
+  const rawTab = searchParams.get('tab');
+  const tab: Tab = (TABS as readonly string[]).includes(rawTab ?? '') ? (rawTab as Tab) : 'overview';
   const [confirmState, setConfirmState] = React.useState<ConfirmState>(null);
 
   function switchTab(t: Tab) {
-    setTab(t);
     router.push(`/portal/super-admin?tab=${t}`);
   }
 

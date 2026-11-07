@@ -71,7 +71,9 @@ async function SuperAdminData({ searchParams }: { searchParams: SearchParams }) 
 
 export default function PortalSuperAdminPage({ searchParams }: { searchParams: SearchParams }) {
   return (
-    <Suspense fallback={<div className="flex min-h-screen items-center justify-center text-muted-foreground">Loading...</div>}>
+    // Keyed on the query string so switching tabs/pages shows the loading state immediately
+    // instead of leaving the old tab on screen while the new data loads.
+    <Suspense key={JSON.stringify(searchParams)} fallback={<div className="flex min-h-[60vh] items-center justify-center text-muted-foreground">Loading...</div>}>
       <SuperAdminData searchParams={searchParams} />
     </Suspense>
   );
