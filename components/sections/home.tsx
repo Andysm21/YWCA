@@ -8,6 +8,7 @@ import { CampCalendar } from '@/components/shared/camp-calendar';
 import { SeasonTabs } from '@/components/shared/season-tabs';
 import { GalleryMasonry } from '@/components/shared/gallery-masonry';
 import { Reveal } from '@/components/shared/reveal';
+import { SnowEffect, TideWaves, SeasonOpenBanner } from '@/components/shared/season-effects';
 import type { Season } from '@/lib/camp-data';
 import type { GalleryImageRow } from '@/lib/queries/gallery';
 
@@ -16,25 +17,31 @@ const marqueeItems = [
   'Independence', 'Team-based activities', 'Fun-filled', 'Body, Mind and Spirit',
 ];
 
-export function HomeHero() {
+export function HomeHero({ seasons = [] }: { seasons?: Season[] }) {
+  const open = seasons.filter((x) => x.dbStatus === 'open');
+  const hasWinter = open.some((x) => x.type === 'winter');
+  const hasSummer = open.some((x) => x.type === 'summer');
   return (
     <section className="relative isolate overflow-hidden">
+      {hasWinter && <SnowEffect />}
+      {hasSummer && <TideWaves />}
       <div className="absolute inset-0 -z-10">
         <div className="absolute -left-1/4 top-0 h-[600px] w-[600px] rounded-full bg-brand-orange/20 blur-[120px] animate-aurora" />
         <div className="absolute right-0 top-1/4 h-[500px] w-[500px] rounded-full bg-brand-navy/20 blur-[120px] animate-aurora [animation-delay:4s]" />
         <div className="absolute bottom-0 left-1/3 h-[400px] w-[400px] rounded-full bg-brand-gold/15 blur-[100px] animate-aurora [animation-delay:8s]" />
+        {hasWinter && <div className="absolute -right-1/4 top-1/3 h-[520px] w-[520px] rounded-full bg-sky-400/20 blur-[120px] animate-aurora [animation-delay:2s]" />}
         <div className="absolute inset-0 bg-grid opacity-20 mask-fade-b" />
       </div>
 
       <div className="mx-auto max-w-7xl px-6 pb-20 pt-24 sm:pt-32 lg:px-8">
         <div className="flex flex-col items-center text-center">
-          <div className="inline-flex items-center gap-2 rounded-full border border-primary/30 bg-primary/10 px-4 py-1.5 text-sm font-medium text-primary backdrop-blur-sm animate-fade-in">
-            <span className="relative flex h-2.5 w-2.5">
-              <span className="absolute inline-flex h-full w-full animate-pulse-ring rounded-full bg-primary" />
-              <span className="relative inline-flex h-2.5 w-2.5 rounded-full bg-primary" />
-            </span>
-            The Camp — by the YWCA
-          </div>
+          {open.length > 0 ? (
+            <SeasonOpenBanner seasons={open} />
+          ) : (
+            <div className="inline-flex items-center gap-2 rounded-full border border-primary/30 bg-primary/10 px-4 py-1.5 text-sm font-medium text-primary backdrop-blur-sm animate-fade-in">
+              The Camp — by the YWCA
+            </div>
+          )}
 
           <h1 className="mt-8 max-w-5xl font-display text-5xl font-extrabold leading-[1.05] tracking-tight text-foreground text-balance sm:text-6xl lg:text-7xl animate-fade-up">
             A fun-filled,{' '}

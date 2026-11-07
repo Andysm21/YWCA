@@ -16,7 +16,7 @@ export default async function GalleryPage() {
         subtitle="A glimpse of life at camp. Click any photo to enlarge."
       />
       <div className="mx-auto max-w-7xl px-6 py-16 lg:px-8">
-        <GalleryMasonry images={images} />
+        <GalleryMasonry images={images} showcase />
       </div>
     </>
   );

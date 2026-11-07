@@ -8,7 +8,7 @@ export default async function Home() {
   const [seasons, galleryImages] = await Promise.all([getOpenSeasonsWithCamps(), getPublicGalleryImages(8)]);
   return (
     <>
-      <HomeHero />
+      <HomeHero seasons={seasons} />
       <HomeSeasonExplorer seasons={seasons} />
       <HomeCalendar seasons={seasons} />
       <HomeHighlights />
