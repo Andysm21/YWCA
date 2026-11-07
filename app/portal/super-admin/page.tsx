@@ -7,6 +7,7 @@ import { getStaffUsers } from '@/lib/queries/users';
 import { getNewsPostsPage } from '@/lib/queries/news';
 import { getGalleryImagesPage } from '@/lib/queries/gallery';
 import { getTodayEmailUsage } from '@/lib/queries/email-usage';
+import { getPublicSiteSettings } from '@/lib/queries/site-settings';
 
 export const metadata = { title: 'Super Admin Dashboard — YWCA Camp Portal' };
 
@@ -28,7 +29,7 @@ async function SuperAdminData({ searchParams }: { searchParams: SearchParams }) 
   const newsPage = Math.max(1, parseInt(searchParams.newsPage ?? '1', 10) || 1);
   const galleryPage = Math.max(1, parseInt(searchParams.galleryPage ?? '1', 10) || 1);
 
-  const [{ rows, count }, stats, campBreakdown, seasons, camps, campTypes, staffUsers, newsPageResult, galleryPageResult, emailUsage] = await Promise.all([
+  const [{ rows, count }, stats, campBreakdown, seasons, camps, campTypes, staffUsers, newsPageResult, galleryPageResult, emailUsage, siteSettings] = await Promise.all([
     getRegistrationsPage({ page, pageSize: PAGE_SIZE, campId, status }),
     getRegistrationStats(),
     getCampBreakdown(),
@@ -39,6 +40,7 @@ async function SuperAdminData({ searchParams }: { searchParams: SearchParams }) 
     getNewsPostsPage({ page: newsPage, pageSize: 10 }),
     getGalleryImagesPage({ page: galleryPage, pageSize: 24 }),
     getTodayEmailUsage(),
+    getPublicSiteSettings(),
   ]);
 
   return (
@@ -62,6 +64,7 @@ async function SuperAdminData({ searchParams }: { searchParams: SearchParams }) 
       galleryTotalCount={galleryPageResult.count}
       galleryPage={galleryPage}
       emailUsage={emailUsage}
+      siteSettings={siteSettings}
     />
   );
 }

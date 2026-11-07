@@ -1,5 +1,6 @@
 import 'server-only';
 import { createServiceClient } from '@/utils/supabase/service';
+import { CONTACT_SETTING_KEYS, EMPTY_SITE_SETTINGS, type PublicSiteSettings } from '@/lib/site-settings-shared';
 
 /**
  * `site_settings` has no guest RLS policy at all (Guest: none — see
@@ -66,4 +67,38 @@ export async function getMeetingPoints(): Promise<string[]> {
     return value.split('\n').map((v) => v.trim()).filter(Boolean);
   }
   return [];
+}
+
+/**
+ * Announcement banner, contact details and social links saved by the Super
+ * Admin. Anything not saved comes back as an empty string, and the public
+ * site hides it. Never throws: a settings read failure must not take down
+ * every public page (the footer calls this), so it falls back to "nothing set".
+ */
+export async function getPublicSiteSettings(): Promise<PublicSiteSettings> {
+  try {
+    const supabase = createServiceClient();
+    const { data, error } = await supabase
+      .from('site_settings')
+      .select('key, value')
+      .in('key', Object.values(CONTACT_SETTING_KEYS));
+    if (error) throw error;
+    const byKey = new Map((data ?? []).map((row) => [row.key, row.value]));
+    const str = (k: string) => {
+      const v = byKey.get(k);
+      return typeof v === 'string' ? v.trim() : '';
+    };
+    return {
+      announcement: str(CONTACT_SETTING_KEYS.announcement),
+      email: str(CONTACT_SETTING_KEYS.email),
+      phone: str(CONTACT_SETTING_KEYS.phone),
+      address: str(CONTACT_SETTING_KEYS.address),
+      facebook: str(CONTACT_SETTING_KEYS.facebook),
+      instagram: str(CONTACT_SETTING_KEYS.instagram),
+      twitter: str(CONTACT_SETTING_KEYS.twitter),
+    };
+  } catch (err) {
+    console.error('[site-settings] read failed', err);
+    return { ...EMPTY_SITE_SETTINGS };
+  }
 }

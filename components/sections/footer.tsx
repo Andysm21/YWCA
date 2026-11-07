@@ -1,7 +1,7 @@
-'use client';
-
 import Link from 'next/link';
-import { Facebook, Instagram, Twitter, MapPin } from 'lucide-react';
+import { Facebook, Instagram, Twitter, MapPin, Mail, Phone } from 'lucide-react';
+import { getPublicSiteSettings } from '@/lib/queries/site-settings';
+import { DEFAULT_INSTAGRAM_URL } from '@/lib/site-settings-shared';
 import { Logo } from '@/components/logo';
 
 const nav = {
@@ -10,7 +10,14 @@ const nav = {
   Resources: [{ label: 'FAQ', href: '/faq' }, { label: 'Packing List', href: '/packing' }],
 };
 
-export function Footer() {
+export async function Footer() {
+  const settings = await getPublicSiteSettings();
+  const socials = [
+    { label: 'Facebook', Icon: Facebook, href: settings.facebook },
+    { label: 'Instagram', Icon: Instagram, href: settings.instagram || DEFAULT_INSTAGRAM_URL },
+    { label: 'Twitter', Icon: Twitter, href: settings.twitter },
+  ].filter((x) => x.href);
+  const hasContact = !!(settings.email || settings.phone || settings.address);
   return (
     <footer className="relative mt-10 overflow-hidden border-t border-border/60 bg-gradient-to-b from-background to-card/30 print:hidden">
       <div className="mx-auto max-w-7xl px-6 py-16 lg:px-8">
@@ -25,8 +32,8 @@ export function Footer() {
               with a simplistic lifestyle and team-based activities.
             </p>
             <div className="mt-6 flex items-center gap-3">
-              {[Facebook, Instagram, Twitter].map((Icon, i) => (
-                <a key={i} href="#" className="flex h-10 w-10 items-center justify-center rounded-full border border-border/60 bg-card/40 text-muted-foreground transition-all hover:-translate-y-0.5 hover:border-primary hover:text-primary">
+              {socials.map(({ label, Icon, href }) => (
+                <a key={label} href={href} target="_blank" rel="noopener noreferrer" aria-label={label} className="flex h-10 w-10 items-center justify-center rounded-full border border-border/60 bg-card/40 text-muted-foreground transition-all hover:-translate-y-0.5 hover:border-primary hover:text-primary">
                   <Icon className="h-4 w-4" />
                 </a>
               ))}
@@ -47,12 +54,14 @@ export function Footer() {
           ))}
         </div>
 
-        <div className="mt-12 flex flex-col gap-4 rounded-2xl border border-border/60 bg-card/40 p-6 sm:flex-row sm:items-center sm:justify-between">
-          <div className="flex flex-col gap-3 sm:flex-row sm:gap-8">
-            <span className="inline-flex items-center gap-2 text-sm text-muted-foreground"><MapPin className="h-4 w-4 text-primary" /> Paradise, Ras Sudr, Egypt</span>
+        {hasContact && (
+          <div className="mt-12 flex flex-col gap-3 rounded-2xl border border-border/60 bg-card/40 p-6 sm:flex-row sm:flex-wrap sm:items-center sm:gap-8">
+            {settings.address && <span className="inline-flex items-center gap-2 text-sm text-muted-foreground"><MapPin className="h-4 w-4 text-primary" /> {settings.address}</span>}
+            {settings.email && <a href={`mailto:${settings.email}`} className="inline-flex items-center gap-2 text-sm text-muted-foreground transition-colors hover:text-primary"><Mail className="h-4 w-4 text-primary" /> {settings.email}</a>}
+            {settings.phone && <a href={`tel:${settings.phone.replace(/[^\d+]/g, '')}`} className="inline-flex items-center gap-2 text-sm text-muted-foreground transition-colors hover:text-primary"><Phone className="h-4 w-4 text-primary" /> {settings.phone}</a>}
           </div>
-          <p className="text-xs text-muted-foreground">© {new Date().getFullYear()} YWCA Camp. </p>
-        </div>
+        )}
+        <p className="mt-8 text-center text-xs text-muted-foreground">© {new Date().getFullYear()} YWCA Camp.</p>
       </div>
     </footer>
   );

@@ -27,6 +27,7 @@ import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { ContentTab } from '@/components/portal/content-management';
 import { ConfirmDialog, type ConfirmState } from '@/components/portal/confirm-dialog';
+import { DEFAULT_INSTAGRAM_URL, type PublicSiteSettings } from '@/lib/site-settings-shared';
 import { EmailStatusCell } from '@/components/portal/email-status-cell';
 import { RegistrationActionsCell } from '@/components/portal/registration-actions-cell';
 
@@ -43,6 +44,7 @@ type CampBreakdown = { campId: string; name: string; slug: string; capacity: num
 type Tab = 'overview' | 'seasons' | 'camps' | 'registrations' | 'staff' | 'content' | 'settings';
 
 type Props = {
+  siteSettings: PublicSiteSettings;
   registrations: RegistrationRow[];
   totalCount: number;
   page: number;
@@ -147,7 +149,7 @@ export function PortalSuperAdminContent(props: Props) {
           onConfirm={setConfirmState}
         />
       )}
-      {tab === 'settings' && <SettingsTab />}
+      {tab === 'settings' && <SettingsTab initial={props.siteSettings} />}
 
       <ConfirmDialog state={confirmState} onClose={() => setConfirmState(null)} />
     </div>
@@ -1059,47 +1061,85 @@ function StaffTab({ staffUsers, onConfirm }: { staffUsers: StaffUser[]; onConfir
     </div>
   );
 }
-/* ========== SETTINGS (static — site_settings DB wiring deferred) ========== */
-function SettingsTab() {
+/* ========== SETTINGS ========== */
+function SettingsTab({ initial }: { initial: PublicSiteSettings }) {
+  const router = useRouter();
+  const [form, setForm] = React.useState<PublicSiteSettings>({ ...initial, instagram: initial.instagram || DEFAULT_INSTAGRAM_URL });
+  const [saving, setSaving] = React.useState(false);
+  const [error, setError] = React.useState<string | null>(null);
+  const [saved, setSaved] = React.useState(false);
+  const set = (k: keyof PublicSiteSettings) => (e: React.ChangeEvent<HTMLInputElement>) => {
+    setForm((f) => ({ ...f, [k]: e.target.value }));
+    setSaved(false);
+  };
+
+  async function handleSave(e: React.FormEvent) {
+    e.preventDefault();
+    setSaving(true);
+    setError(null);
+    setSaved(false);
+    try {
+      const res = await fetch('/api/portal/settings', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(form),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data.error || 'Failed to save settings');
+      setSaved(true);
+      router.refresh();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to save settings');
+    } finally {
+      setSaving(false);
+    }
+  }
+
   return (
-    <div className="max-w-2xl space-y-8">
+    <form onSubmit={handleSave} className="max-w-2xl space-y-8">
       <div className="rounded-2xl border border-border/60 bg-card/50 p-6">
         <div className="mb-4 flex items-center gap-2">
           <Megaphone className="h-5 w-5 text-primary" />
           <h3 className="font-display text-lg font-bold text-foreground">Site-wide announcement</h3>
         </div>
         <div className="space-y-2">
-          <Label>Announcement text</Label>
-          <Input placeholder="Summer 2026 registration is open!" className="rounded-xl bg-background/50" />
-          <p className="text-xs text-muted-foreground">Leave empty to hide the banner.</p>
+          <Label htmlFor="set-announcement">Announcement text</Label>
+          <Input id="set-announcement" value={form.announcement} onChange={set('announcement')} maxLength={200} placeholder="e.g. Registration is open!" className="rounded-xl bg-background/50" />
+          <p className="text-xs text-muted-foreground">Shown as a banner on every public page. Leave empty to hide it.</p>
         </div>
       </div>
 
       <div className="rounded-2xl border border-border/60 bg-card/50 p-6">
-        <div className="mb-4 flex items-center gap-2">
+        <div className="mb-1 flex items-center gap-2">
           <Mail className="h-5 w-5 text-primary" />
           <h3 className="font-display text-lg font-bold text-foreground">Contact information</h3>
         </div>
+        <p className="mb-4 text-xs text-muted-foreground">Shown in the website footer. Fields you leave empty are not shown; if all are empty, the contact section is hidden.</p>
         <div className="grid gap-4 sm:grid-cols-2">
-          <div className="space-y-2"><Label>Email</Label><Input defaultValue="hello@ywcacamp.org" className="rounded-xl bg-background/50" /></div>
-          <div className="space-y-2"><Label>Phone</Label><Input defaultValue="+20 100 000 0000" className="rounded-xl bg-background/50" /></div>
-          <div className="space-y-2 sm:col-span-2"><Label>Address</Label><Input defaultValue="Paradise, Ras Sudr, Egypt" className="rounded-xl bg-background/50" /></div>
+          <div className="space-y-2"><Label htmlFor="set-email">Email</Label><Input id="set-email" type="email" value={form.email} onChange={set('email')} placeholder="name@example.com" className="rounded-xl bg-background/50" /></div>
+          <div className="space-y-2"><Label htmlFor="set-phone">Phone</Label><Input id="set-phone" type="tel" value={form.phone} onChange={set('phone')} placeholder="+20 ..." className="rounded-xl bg-background/50" /></div>
+          <div className="space-y-2 sm:col-span-2"><Label htmlFor="set-address">Address</Label><Input id="set-address" value={form.address} onChange={set('address')} maxLength={200} placeholder="Optional" className="rounded-xl bg-background/50" /></div>
         </div>
       </div>
 
       <div className="rounded-2xl border border-border/60 bg-card/50 p-6">
-        <div className="mb-4 flex items-center gap-2">
+        <div className="mb-1 flex items-center gap-2">
           <MapPin className="h-5 w-5 text-primary" />
           <h3 className="font-display text-lg font-bold text-foreground">Social media links</h3>
         </div>
+        <p className="mb-4 text-xs text-muted-foreground">Only links you fill in appear as icons in the footer. Use the full address, starting with https://</p>
         <div className="grid gap-4 sm:grid-cols-3">
-          <div className="space-y-2"><Label>Facebook</Label><Input placeholder="https://facebook.com/..." className="rounded-xl bg-background/50" /></div>
-          <div className="space-y-2"><Label>Instagram</Label><Input placeholder="https://instagram.com/..." className="rounded-xl bg-background/50" /></div>
-          <div className="space-y-2"><Label>Twitter</Label><Input placeholder="https://twitter.com/..." className="rounded-xl bg-background/50" /></div>
+          <div className="space-y-2"><Label htmlFor="set-facebook">Facebook</Label><Input id="set-facebook" type="url" value={form.facebook} onChange={set('facebook')} placeholder="https://facebook.com/..." className="rounded-xl bg-background/50" /></div>
+          <div className="space-y-2"><Label htmlFor="set-instagram">Instagram</Label><Input id="set-instagram" type="url" value={form.instagram} onChange={set('instagram')} placeholder="https://instagram.com/..." className="rounded-xl bg-background/50" /></div>
+          <div className="space-y-2"><Label htmlFor="set-twitter">Twitter</Label><Input id="set-twitter" type="url" value={form.twitter} onChange={set('twitter')} placeholder="https://twitter.com/..." className="rounded-xl bg-background/50" /></div>
         </div>
       </div>
 
-      <Button size="lg" className="rounded-full glow-orange"><Check className="mr-2 h-4 w-4" /> Save settings</Button>
-    </div>
+      {error && <p className="text-sm text-rose-400">{error}</p>}
+      {saved && <p className="text-sm text-emerald-400">Settings saved. The website will update within a few seconds.</p>}
+      <Button type="submit" size="lg" className="rounded-full glow-orange" disabled={saving}>
+        {saving ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Saving...</> : <><Check className="mr-2 h-4 w-4" /> Save settings</>}
+      </Button>
+    </form>
   );
 }
