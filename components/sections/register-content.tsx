@@ -10,7 +10,7 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { StepProgress } from '@/components/shared/step-progress';
 import { formatDateRange, formatPrice, type Camp } from '@/lib/camp-data';
 import { cn } from '@/lib/utils';
-import { gradeOptionsForCamp, TSHIRT_SIZES } from '@/lib/validation/registration';
+import { gradeOptionsForCamp, tshirtGroupsForCamp, KIDS_TSHIRT_SIZES, ADULT_TSHIRT_SIZES, kidsSizeValue, BUS_PICKUP_OPTIONS } from '@/lib/validation/registration';
 
 type Step1 = {
   camperName: string;
@@ -20,6 +20,7 @@ type Step1 = {
   school: string;
   academicYear: string;
   tshirtSize: string;
+  busPickup: string;
   firstTimeCamper: boolean;
 };
 
@@ -34,7 +35,7 @@ type Step2 = {
   additionalInfo: string;
 };
 
-const emptyStep1: Step1 = { camperName: '', dateOfBirth: '', mobilePhone: '', email: '', school: '', academicYear: '', tshirtSize: '', firstTimeCamper: false };
+const emptyStep1: Step1 = { camperName: '', dateOfBirth: '', mobilePhone: '', email: '', school: '', academicYear: '', tshirtSize: '', busPickup: '', firstTimeCamper: false };
 const emptyStep2: Step2 = { parentName: '', parentMobile: '', alternateMobile: '', parentEmail: '', emergencyContactName: '', emergencyContactNumber: '', medicalCondition: '', additionalInfo: '' };
 
 const CAMP_RULES = [
@@ -50,13 +51,14 @@ const CAMP_RULES = [
 
 const REGISTRATION_STEPS = [
   { icon: User, title: 'Fill in the registration form', body: 'Complete the camper and guardian details on the next pages and submit the form.' },
-  { icon: Mail, title: 'Check your email', body: 'After you submit, we email the parent/guardian a message with your registration number and a personal payment link.' },
+  { icon: Mail, title: 'Check your email', body: 'After you submit, we email the parent/guardian a message with your registration number and a personal payment link. It should arrive within a minute — if you do not see it, check your Spam/Junk folder.' },
   { icon: CreditCard, title: 'Pay the full amount', body: 'Use the link in that email and pay the full camp fee. Partial payments do not secure a spot.' },
   { icon: Upload, title: 'Upload your proof of payment', body: 'Upload a screenshot of the payment through the same link. Our team then reviews it and confirms your registration.' },
 ];
 
 export function RegisterContent({ camp }: { camp: Camp }) {
   const [step, setStep] = React.useState<1 | 2 | 3 | 4 | 5>(1);
+  const sizeGroups = React.useMemo(() => tshirtGroupsForCamp(camp.name), [camp.name]);
   const gradeOptions = React.useMemo(() => gradeOptionsForCamp(camp.name), [camp.name]);
   const [rulesAccepted, setRulesAccepted] = React.useState(false);
   const [submitting, setSubmitting] = React.useState(false);
@@ -65,8 +67,9 @@ export function RegisterContent({ camp }: { camp: Camp }) {
   const [step2, setStep2] = React.useState<Step2>(emptyStep2);
   const [result, setResult] = React.useState<{ registration_number: string; status: string; waitlist_position: number | null } | null>(null);
 
+  const dobOk = !!step1.dateOfBirth && (!camp.dobMin || step1.dateOfBirth >= camp.dobMin) && (!camp.dobMax || step1.dateOfBirth <= camp.dobMax);
   const step1Valid = step1.camperName.trim() && step1.dateOfBirth && step1.mobilePhone.trim() &&
-    /\S+@\S+\.\S+/.test(step1.email) && step1.school.trim() && step1.academicYear.trim() && step1.tshirtSize.trim();
+    /\S+@\S+\.\S+/.test(step1.email) && step1.school.trim() && step1.academicYear.trim() && step1.tshirtSize.trim() && step1.busPickup && dobOk;
   const step2Valid = step2.parentName.trim() && step2.parentMobile.trim() &&
     /\S+@\S+\.\S+/.test(step2.parentEmail) && step2.emergencyContactName.trim() && step2.emergencyContactNumber.trim();
 
@@ -181,7 +184,12 @@ export function RegisterContent({ camp }: { camp: Camp }) {
             <div className="grid gap-5 sm:grid-cols-2">
               <div className="space-y-2">
                 <Label htmlFor="dateOfBirth">Date of birth *</Label>
-                <Input id="dateOfBirth" type="date" required className="rounded-xl bg-background/50" value={step1.dateOfBirth} onChange={(e) => setStep1({ ...step1, dateOfBirth: e.target.value })} />
+                <Input id="dateOfBirth" type="date" required min={camp.dobMin ?? undefined} max={camp.dobMax ?? undefined} className="rounded-xl bg-background/50" value={step1.dateOfBirth} onChange={(e) => setStep1({ ...step1, dateOfBirth: e.target.value })} />
+                {(camp.dobMin || camp.dobMax) && (
+                  <p className={cn('text-xs', step1.dateOfBirth && !dobOk ? 'text-rose-400' : 'text-muted-foreground')}>
+                    {camp.dobMin && camp.dobMax ? `For this camp: born between ${camp.dobMin} and ${camp.dobMax}.` : camp.dobMin ? `For this camp: born on or after ${camp.dobMin}.` : `For this camp: born on or before ${camp.dobMax}.`}
+                  </p>
+                )}
               </div>
               <div className="space-y-2">
                 <Label htmlFor="mobilePhone">Camper mobile *</Label>
@@ -208,10 +216,36 @@ export function RegisterContent({ camp }: { camp: Camp }) {
                 <Label htmlFor="tshirtSize">T-shirt size *</Label>
                 <select id="tshirtSize" required className="h-10 w-full rounded-xl border border-input bg-background/50 px-3 text-sm" value={step1.tshirtSize} onChange={(e) => setStep1({ ...step1, tshirtSize: e.target.value })}>
                   <option value="" disabled>Select...</option>
-                  {TSHIRT_SIZES.map((o) => <option key={o} value={o}>{o}</option>)}
+                  {sizeGroups.kids && (
+                    <optgroup label="Kids sizes">
+                      {KIDS_TSHIRT_SIZES.map((n) => <option key={n} value={kidsSizeValue(n)}>{n} (Kids size)</option>)}
+                    </optgroup>
+                  )}
+                  {sizeGroups.adult && (
+                    <optgroup label={sizeGroups.kids ? 'Adult sizes' : 'Sizes'}>
+                      {ADULT_TSHIRT_SIZES.map((n) => <option key={n} value={n}>{n}</option>)}
+                    </optgroup>
+                  )}
                 </select>
               </div>
             </div>
+            <fieldset className="space-y-2">
+              <legend className="text-sm font-medium text-foreground">Bus pickup point *</legend>
+              <div className="grid gap-3 sm:grid-cols-2">
+                {BUS_PICKUP_OPTIONS.map((opt) => (
+                  <label
+                    key={opt}
+                    className={cn(
+                      'flex cursor-pointer items-start gap-3 rounded-xl border p-4 text-sm transition-colors',
+                      step1.busPickup === opt ? 'border-primary bg-primary/10 text-foreground' : 'border-border/60 bg-background/30 text-muted-foreground hover:border-primary/40'
+                    )}
+                  >
+                    <input type="radio" name="busPickup" value={opt} checked={step1.busPickup === opt} onChange={() => setStep1({ ...step1, busPickup: opt })} className="mt-0.5 h-4 w-4 accent-[hsl(var(--primary))]" required />
+                    <span>{opt}</span>
+                  </label>
+                ))}
+              </div>
+            </fieldset>
             <label className="flex items-center gap-2.5 text-sm text-muted-foreground">
               <Checkbox checked={step1.firstTimeCamper} onCheckedChange={(v) => setStep1({ ...step1, firstTimeCamper: v === true })} />
               This is the camper's first time at YWCA Camp
@@ -299,6 +333,11 @@ export function RegisterContent({ camp }: { camp: Camp }) {
             {result.status !== 'waitlisted' && (
               <p className="mx-auto mt-6 max-w-md rounded-xl border border-amber-500/40 bg-amber-500/10 p-3 text-sm font-semibold text-foreground">
                 ⏳ Status: Pending payment — your spot is not secured until you pay and upload proof of payment.
+              </p>
+            )}
+            {result.status !== 'waitlisted' && (
+              <p className="mx-auto mt-3 max-w-md rounded-xl border border-sky-500/40 bg-sky-500/10 p-3 text-sm text-foreground">
+                📧 You should receive the payment email <strong>right away</strong> at {step2.parentEmail}. If you don&apos;t see it within a few minutes, please check your <strong>Spam / Junk</strong> folder and mark it as &quot;Not spam&quot;.
               </p>
             )}
             <div className="mx-auto mt-8 max-w-sm space-y-3 rounded-xl border border-border/60 bg-background/40 p-5 text-left text-sm">

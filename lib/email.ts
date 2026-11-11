@@ -74,7 +74,11 @@ function classifySmtpError(err: unknown): { failureType: EmailFailureType; reaso
 async function sendMailSafely(mail: Parameters<ReturnType<typeof getTransporter>['sendMail']>[0]): Promise<SendResult> {
   try {
     const transporter = getTransporter();
-    const info = await transporter.sendMail(mail);
+    const info = await transporter.sendMail({
+      ...mail,
+      // Marks the message as automated transactional mail (keeps auto-responders from replying to it).
+      headers: { 'Auto-Submitted': 'auto-generated', 'X-Auto-Response-Suppress': 'OOF, AutoReply', ...(mail.headers as Record<string, string> | undefined) },
+    });
     if (info.rejected && info.rejected.length > 0) {
       return { status: 'failed', reason: `Invalid recipient: ${info.rejected.join(', ')}`, failureType: 'invalid_address' };
     }
@@ -164,6 +168,7 @@ type PendingPaymentEmailParams = {
   campSlug: string;
   priceEgp: number;
   meetingPoints: string[];
+  busPickup?: string;
 };
 
 const LOCATION_URL = 'https://ywcacampegypt.com/location';
@@ -200,7 +205,7 @@ function emailShell(opts: EmailShellOptions): string {
 <tr>
 <td align="center" bgcolor="#1B1F3A" style="background-color:#1B1F3A; background-image:linear-gradient(135deg,#1B1F3A 0%,#2A2F57 100%); padding:34px 28px 30px;">
 ${heroLogoHtml()}
-<p style="margin:18px 0 0;"><span style="display:inline-block; background-color:${pillColor}; color:#1B1F3A; font-size:11px; font-weight:800; letter-spacing:0.14em; text-transform:uppercase; padding:6px 14px; border-radius:100px;">${escapeHtml(opts.pill)}</span></p>
+<p style="margin:18px 0 0;"><span style="display:inline-block; background-color:${pillColor}; color:#1B1F3A; font-size:11px; font-weight:800; letter-spacing:0.06em; padding:6px 14px; border-radius:100px;">${escapeHtml(opts.pill)}</span></p>
 <h1 style="margin:14px 0 6px; font-size:30px; line-height:1.15; color:#ffffff; font-weight:800;">${opts.title}</h1>
 <p style="margin:0; font-size:15px; line-height:1.5; color:#C9CBE0;">${opts.subtitle}</p>
 </td>
@@ -212,6 +217,12 @@ ${heroLogoHtml()}
 <tr>
 <td style="padding:30px 28px 8px;">
 ${opts.contentHtml}
+</td>
+</tr>
+
+<tr>
+<td style="padding:0 28px 14px;">
+<p style="margin:0; font-size:12px; line-height:1.6; color:#6B6E80;">If this email reached your spam or junk folder, please mark it as <strong>Not spam</strong> so you receive our next messages in your inbox.</p>
 </td>
 </tr>
 
@@ -278,8 +289,8 @@ export async function sendPendingPaymentEmail(params: PendingPaymentEmailParams)
   const contentHtml = `
 <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background-color:#FFF6DD; border:2px solid #F5B83D; border-radius:14px;">
 <tr><td style="padding:16px 18px;">
-<p style="margin:0 0 4px; font-size:12px; font-weight:800; letter-spacing:0.1em; color:#9A6A00;">⏳ STATUS: PENDING PAYMENT</p>
-<p style="margin:0; font-size:15px; line-height:1.55; color:#3D2F00;"><strong>Your spot is NOT secured yet.</strong> You are only registered once you pay the full amount <em>and</em> upload your proof of payment.</p>
+<p style="margin:0 0 4px; font-size:12px; font-weight:800; letter-spacing:0.1em; color:#9A6A00;">Status: pending payment</p>
+<p style="margin:0; font-size:15px; line-height:1.55; color:#3D2F00;"><strong>Your spot is not secured yet.</strong> You are only registered once you pay the full amount <em>and</em> upload your proof of payment.</p>
 </td></tr>
 </table>
 
@@ -302,6 +313,7 @@ ${detailRowHtml('Registration No.', escapeHtml(params.registrationNumber), '#B34
 ${detailRowHtml('Camp', escapeHtml(params.campName))}
 ${detailRowHtml('Camper', escapeHtml(params.camperName))}
 ${detailRowHtml('Mobile', escapeHtml(params.mobilePhone))}
+${params.busPickup ? detailRowHtml('Bus pickup', escapeHtml(params.busPickup)) : ''}
 ${detailRowHtml('Amount due', `EGP ${priceLabel}`, '#1A6B5C')}
 </table>
 </td></tr>
@@ -327,13 +339,13 @@ ${meetingPointsHtml}
 
   const html = emailShell({
     preheader: `Your spot at ${params.campName} is not secured yet — pay in full and upload your proof of payment.`,
-    pill: 'Action needed',
+    pill: 'Next step',
     title: `Almost there, ${escapeHtml(firstName)}!`,
     subtitle: `Your spot at ${escapeHtml(params.campName)} isn't secured yet.`,
     contentHtml,
   });
 
-  const text = `ACTION NEEDED - YOUR SPOT IS NOT SECURED YET
+  const text = `YOUR SPOT IS NOT SECURED YET - PAYMENT IS THE NEXT STEP
 
 Hi ${params.camperName},
 
@@ -350,7 +362,8 @@ Pay & secure my spot: ${paymentUrl}
 Registration No.: ${params.registrationNumber}
 Camp: ${params.campName}
 Camper: ${params.camperName}
-Mobile: ${params.mobilePhone}
+Mobile: ${params.mobilePhone}${params.busPickup ? `
+Bus pickup: ${params.busPickup}` : ''}
 Amount due: EGP ${priceLabel}
 
 Please note: if the payment and proof of payment are not completed in this order, your registration stays pending, you will not be registered, and a place is not guaranteed.
@@ -366,7 +379,7 @@ YWCA Camp Team`;
   return sendMailSafely({
     from: `"YWCA Camp" <${process.env.GMAIL_USER}>`,
     to: params.to,
-    subject: `Action needed: pay to secure your spot — ${params.campName} (${params.registrationNumber})`,
+    subject: `Your YWCA Camp payment link for ${params.campName} (${params.registrationNumber})`,
     html,
     text,
   });
@@ -430,7 +443,7 @@ export async function sendWaitlistPromotedEmail(params: WaitlistPromotedEmailPar
   const contentHtml = `
 <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background-color:#FFF6DD; border:2px solid #F5B83D; border-radius:14px;">
 <tr><td style="padding:16px 18px;">
-<p style="margin:0 0 4px; font-size:12px; font-weight:800; letter-spacing:0.1em; color:#9A6A00;">⏳ STATUS: PENDING PAYMENT</p>
+<p style="margin:0 0 4px; font-size:12px; font-weight:800; letter-spacing:0.1em; color:#9A6A00;">Status: pending payment</p>
 <p style="margin:0; font-size:15px; line-height:1.55; color:#3D2F00;"><strong>A spot is open for you, but it is not secured yet.</strong> It is yours once you pay the full amount <em>and</em> upload your proof of payment.</p>
 </td></tr>
 </table>
@@ -475,7 +488,7 @@ ${detailRowHtml('Amount due', `EGP ${priceLabel}`, '#1A6B5C')}
   return sendMailSafely({
     from: `"YWCA Camp" <${process.env.GMAIL_USER}>`,
     to: params.to,
-    subject: `A spot opened up — pay to claim it: ${params.campName} (${params.registrationNumber})`,
+    subject: `A spot opened up in ${params.campName} (${params.registrationNumber})`,
     html,
     text: `GOOD NEWS - A SPOT OPENED UP (NOT SECURED YET)
 

@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { requireSuperAdmin } from '@/lib/auth/require-staff';
 import { writeAuditLog } from '@/lib/audit';
+import { newColumnsReady } from '@/lib/schema-features';
 import { validateCampInput, type CampInput } from '@/lib/validation/camp';
 
 /**
@@ -44,6 +45,14 @@ export async function PATCH(request: Request, { params }: { params: { id: string
       description: body.description.trim(),
       cover_photo_url: body.cover_photo_url?.trim() || null,
     };
+    const dobMin = body.dob_min?.trim() || null;
+    const dobMax = body.dob_max?.trim() || null;
+    if (await newColumnsReady()) {
+      update.dob_min = dobMin;
+      update.dob_max = dobMax;
+    } else if (dobMin || dobMax) {
+      return NextResponse.json({ error: 'Birth-date limits need a one-time database update first (run supabase/migrations/20260806000001_dob_range_and_bus_pickup.sql in the Supabase SQL editor).' }, { status: 503 });
+    }
     if (body.status) update.status = body.status;
 
     const { data: camp, error } = await supabase

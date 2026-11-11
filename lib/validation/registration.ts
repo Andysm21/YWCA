@@ -19,7 +19,29 @@ export function gradeOptionsForCamp(campName: string): readonly string[] {
   return GRADE_OPTIONS;
 }
 
-export const TSHIRT_SIZES = ['XS', 'S', 'M', 'L', 'XL', 'XXL'] as const;
+export const KIDS_TSHIRT_SIZES = ['8', '10', '12', '14', '16'] as const;
+export const ADULT_TSHIRT_SIZES = ['S', 'M', 'L', 'XL'] as const;
+
+/** Stored value for a kids size is "Kids 8" so it can't be mistaken for anything else in exports. */
+export const kidsSizeValue = (n: string) => `Kids ${n}`;
+
+/**
+ * T-shirt sizes by camp type: Kids camps use the kids (numeric) sizes;
+ * Teen camps can pick from both lists; everything else (Uni, Boys, Girls, Leadership) uses S-XL.
+ */
+export function tshirtGroupsForCamp(campName: string): { kids: boolean; adult: boolean } {
+  const n = campName.toLowerCase();
+  if (n.includes('teen')) return { kids: true, adult: true };
+  if (n.includes('kids')) return { kids: true, adult: false };
+  return { kids: false, adult: true };
+}
+
+export function tshirtSizesForCamp(campName: string): string[] {
+  const g = tshirtGroupsForCamp(campName);
+  return [...(g.kids ? KIDS_TSHIRT_SIZES.map(kidsSizeValue) : []), ...(g.adult ? ADULT_TSHIRT_SIZES : [])];
+}
+
+export const BUS_PICKUP_OPTIONS = ['Mohandessin: Mostafa Mahmoud Mosque', 'Tagamo3: In front of Rehab gate 1'] as const;
 
 const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
@@ -39,6 +61,7 @@ export type RegistrationInput = {
   school: string;
   academicYear: string;
   tshirtSize: string;
+  busPickup: string;
   parentName: string;
   parentMobile: string;
   parentEmail: string;
@@ -154,8 +177,9 @@ export function validateRegistrationInput(body: RegistrationInput): string | nul
   if (!(GRADE_OPTIONS as readonly string[]).includes(String(body.academicYear).trim())) {
     return 'Please choose a valid grade.';
   }
-  if (!(TSHIRT_SIZES as readonly string[]).includes(String(body.tshirtSize).trim())) {
-    return 'Please choose a valid T-shirt size.';
+  // (T-shirt size is validated per camp type in the API route.)
+  if (!(BUS_PICKUP_OPTIONS as readonly string[]).includes(String(body.busPickup).trim())) {
+    return 'Please choose a bus pickup point.';
   }
 
   return null;

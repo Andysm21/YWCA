@@ -2,6 +2,7 @@ import 'server-only';
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { createClient as createServerClient } from '@/utils/supabase/server';
 import { createAnonClient } from '@/utils/supabase/anon';
+import { newColumnsReady } from '@/lib/schema-features';
 import { cookies } from 'next/headers';
 import {
   deriveCampVisuals,
@@ -15,7 +16,10 @@ import {
 
 // Camp names are never stored on `camps` — always resolved via the
 // camp_type_id -> camp_types.name join (see migration 20260731000001).
-const CAMP_COLUMNS = 'id, slug, age_min, age_max, price_egp, capacity, date_start, date_end, description, cover_photo_url, status, season_id, camp_type_id, camp_types(name)';
+const BASE_CAMP_COLUMNS = 'id, slug, age_min, age_max, price_egp, capacity, date_start, date_end, description, cover_photo_url, status, season_id, camp_type_id, camp_types(name)';
+async function campColumns(): Promise<string> {
+  return (await newColumnsReady()) ? BASE_CAMP_COLUMNS.replace('camp_type_id,', 'camp_type_id, dob_min, dob_max,') : BASE_CAMP_COLUMNS;
+}
 const SEASON_COLUMNS = 'id, type, year, status';
 
 type CampRow = {
@@ -32,6 +36,8 @@ type CampRow = {
   status: CampDbStatus;
   season_id: string;
   camp_type_id: string;
+  dob_min?: string | null;
+  dob_max?: string | null;
   camp_types: { name: string } | { name: string }[] | null;
 };
 
@@ -95,6 +101,8 @@ function toCamp(row: CampRow, season: SeasonRow, spotsLeft: number): Camp {
     ageMin: row.age_min,
     ageMax: row.age_max,
     ageRange: `${row.age_min}–${row.age_max}`,
+    dobMin: row.dob_min ?? null,
+    dobMax: row.dob_max ?? null,
     capacity: row.capacity,
     spotsLeft,
     displayStatus: getDisplayStatus({ dbStatus: row.status, spotsLeft, capacity: row.capacity }),
@@ -140,13 +148,14 @@ export async function getOpenSeasonsWithCamps(): Promise<Season[]> {
   if (!seasonRows || seasonRows.length === 0) return [];
 
   const seasonIds = seasonRows.map((s) => s.id);
-  const { data: campRows, error: campError } = await supabase
+  const { data: campRowsRaw, error: campError } = await supabase
     .from('camps')
-    .select(CAMP_COLUMNS)
+    .select(await campColumns())
     .in('season_id', seasonIds)
     .neq('status', 'closed')
     .order('date_start', { ascending: true });
   if (campError) throw campError;
+  const campRows = campRowsRaw as unknown as CampRow[] | null;
 
   const capacityByCamp = Object.fromEntries((campRows ?? []).map((c) => [c.id, c.capacity]));
   const spotsLeftMap = await getSpotsLeftMap(supabase, (campRows ?? []).map((c) => c.id), capacityByCamp);
@@ -179,13 +188,14 @@ export async function getOpenCamps(): Promise<Camp[]> {
 export async function getCampBySlug(slug: string): Promise<Camp | null> {
   const supabase = await getAnonClient();
 
-  const { data: campRow, error: campError } = await supabase
+  const { data: campRowRaw, error: campError } = await supabase
     .from('camps')
-    .select(CAMP_COLUMNS)
+    .select(await campColumns())
     .eq('slug', slug)
     .neq('status', 'closed')
     .maybeSingle();
   if (campError) throw campError;
+  const campRow = campRowRaw as unknown as CampRow | null;
   if (!campRow) return null;
 
   const { data: seasonRow, error: seasonError } = await supabase
@@ -220,12 +230,13 @@ export async function getAllSeasonsWithCampsForPortal(): Promise<Season[]> {
   if (!seasonRows || seasonRows.length === 0) return [];
 
   const seasonIds = seasonRows.map((s) => s.id);
-  const { data: campRows, error: campError } = await supabase
+  const { data: campRowsRaw, error: campError } = await supabase
     .from('camps')
-    .select(CAMP_COLUMNS)
+    .select(await campColumns())
     .in('season_id', seasonIds)
     .order('date_start', { ascending: true });
   if (campError) throw campError;
+  const campRows = campRowsRaw as unknown as CampRow[] | null;
 
   const capacityByCamp = Object.fromEntries((campRows ?? []).map((c) => [c.id, c.capacity]));
   const spotsLeftMap = await getSpotsLeftMap(supabase, (campRows ?? []).map((c) => c.id), capacityByCamp);

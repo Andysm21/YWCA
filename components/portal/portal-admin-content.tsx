@@ -69,8 +69,8 @@ export function PortalAdminContent({ registrations, totalCount, page, pageSize, 
   ];
 
   function exportCSV() {
-    const headers = ['Reg #', 'Camper', 'Camp', 'Status', 'Guardian', 'Email', 'Phone', 'Registered'];
-    const rows = registrations.map((r) => [r.registration_number, r.camper_name, r.camps?.name ?? '', r.status, r.parent_name, r.email, r.mobile_phone, r.created_at]);
+    const headers = ['Reg #', 'Camper', 'Camp', 'Status', 'Birth date', 'Grade', 'T-shirt', 'Bus pickup', 'Guardian', 'Email', 'Phone', 'Registered'];
+    const rows = registrations.map((r) => [r.registration_number, r.camper_name, r.camps?.name ?? '', r.status, r.date_of_birth ?? '', r.academic_year ?? '', r.tshirt_size ?? '', r.bus_pickup ?? '', r.parent_name, r.email, r.mobile_phone, r.created_at]);
     const csv = [headers, ...rows].map((row) => row.map((c) => `"${c}"`).join(',')).join('\n');
     const blob = new Blob([csv], { type: 'text/csv' });
     const url = URL.createObjectURL(blob);

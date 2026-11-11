@@ -346,7 +346,7 @@ function SeasonsTab({ seasons, onConfirm }: { seasons: Season[]; onConfirm: (s: 
 /* ========== CAMPS ========== */
 const emptyCampForm = {
   season_id: '', camp_type_id: '', slug: '', age_min: '7', age_max: '11', price_egp: '',
-  capacity: '48', date_start: '', date_end: '', description: '', cover_photo_url: '',
+  capacity: '48', date_start: '', date_end: '', description: '', cover_photo_url: '', dob_min: '', dob_max: '',
 };
 type CampFormState = typeof emptyCampForm;
 
@@ -430,6 +430,22 @@ function CampForm({
     }
   }
 
+  /** Birth-date range matching the age range as of the camp start date. */
+  function suggestDobRange() {
+    const start = form.date_start ? new Date(form.date_start) : null;
+    const aMin = parseInt(form.age_min, 10);
+    const aMax = parseInt(form.age_max, 10);
+    if (!start || Number.isNaN(start.getTime()) || !Number.isInteger(aMin) || !Number.isInteger(aMax)) {
+      setErrors(['Set the start date and the min/max age first, then use "Suggest from ages".']);
+      return;
+    }
+    setErrors([]);
+    const fmt = (d: Date) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+    const latest = new Date(start.getFullYear() - aMin, start.getMonth(), start.getDate());
+    const earliest = new Date(start.getFullYear() - aMax - 1, start.getMonth(), start.getDate() + 1);
+    setForm((f) => ({ ...f, dob_min: fmt(earliest), dob_max: fmt(latest) }));
+  }
+
   const existingRegCount = initial ? campBreakdownById.get(initial.id)?.total ?? 0 : 0;
 
   return (
@@ -486,6 +502,14 @@ function CampForm({
         <div className="space-y-2"><Label>Max age</Label><Input type="number" value={form.age_max} onChange={(e) => set('age_max', e.target.value)} className="rounded-xl bg-background/50" /></div>
         <div className="space-y-2"><Label>Capacity</Label><Input type="number" value={form.capacity} onChange={(e) => set('capacity', e.target.value)} className="rounded-xl bg-background/50" /></div>
         <div className="space-y-2"><Label>Price (EGP)</Label><Input type="number" value={form.price_egp} onChange={(e) => set('price_egp', e.target.value)} className="rounded-xl bg-background/50" /></div>
+        <div className="space-y-2"><Label>Earliest birth date (min)</Label><Input type="date" value={form.dob_min} onChange={(e) => set('dob_min', e.target.value)} className="rounded-xl bg-background/50" /></div>
+        <div className="space-y-2"><Label>Latest birth date (max)</Label><Input type="date" value={form.dob_max} onChange={(e) => set('dob_max', e.target.value)} className="rounded-xl bg-background/50" /></div>
+        <div className="flex flex-col justify-end space-y-2">
+          <Button type="button" variant="outline" size="sm" className="rounded-full border-border/60 bg-transparent" onClick={suggestDobRange}>Suggest from ages</Button>
+        </div>
+        <p className="text-xs text-muted-foreground sm:col-span-2 lg:col-span-3">
+          Optional. On the registration form, birth dates before the earliest or after the latest date are disabled. Leave empty for no limit.
+        </p>
         <div className="space-y-2 sm:col-span-2 lg:col-span-3">
           <Label>Description</Label>
           <Input placeholder="A brief description of the camp..." value={form.description} onChange={(e) => set('description', e.target.value)} className="rounded-xl bg-background/50" />
@@ -588,6 +612,8 @@ function CampsTab({
             date_end: editingCamp.dateEnd,
             description: editingCamp.description,
             cover_photo_url: editingCamp.coverPhotoUrl ?? '',
+            dob_min: editingCamp.dobMin ?? '',
+            dob_max: editingCamp.dobMax ?? '',
           }}
           campBreakdownById={campBreakdownById}
           onCancel={() => setEditingCamp(null)}
@@ -686,8 +712,8 @@ function RegistrationsTab({
   ];
 
   function exportCSV() {
-    const headers = ['Reg #', 'Camper', 'Camp', 'Status', 'Guardian', 'Email', 'Phone', 'Registered'];
-    const rows = registrations.map((r) => [r.registration_number, r.camper_name, r.camps?.name ?? '', r.status, r.parent_name, r.email, r.mobile_phone, r.created_at]);
+    const headers = ['Reg #', 'Camper', 'Camp', 'Status', 'Birth date', 'Grade', 'T-shirt', 'Bus pickup', 'Guardian', 'Email', 'Phone', 'Registered'];
+    const rows = registrations.map((r) => [r.registration_number, r.camper_name, r.camps?.name ?? '', r.status, r.date_of_birth ?? '', r.academic_year ?? '', r.tshirt_size ?? '', r.bus_pickup ?? '', r.parent_name, r.email, r.mobile_phone, r.created_at]);
     const csv = [headers, ...rows].map((row) => row.map((c) => `"${c}"`).join(',')).join('\n');
     const blob = new Blob([csv], { type: 'text/csv' });
     const url = URL.createObjectURL(blob);

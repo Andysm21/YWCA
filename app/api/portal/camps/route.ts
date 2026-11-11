@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { requireSuperAdmin } from '@/lib/auth/require-staff';
 import { writeAuditLog } from '@/lib/audit';
+import { newColumnsReady } from '@/lib/schema-features';
 import { validateCampInput, type CampInput } from '@/lib/validation/camp';
 
 export async function POST(request: Request) {
@@ -41,9 +42,16 @@ export async function POST(request: Request) {
       );
     }
 
+    const dobMin = body.dob_min?.trim() || null;
+    const dobMax = body.dob_max?.trim() || null;
+    if ((dobMin || dobMax) && !(await newColumnsReady())) {
+      return NextResponse.json({ error: 'Birth-date limits need a one-time database update first (run supabase/migrations/20260806000001_dob_range_and_bus_pickup.sql in the Supabase SQL editor).' }, { status: 503 });
+    }
+
     const { data: camp, error } = await supabase
       .from('camps')
       .insert({
+        ...(dobMin || dobMax ? { dob_min: dobMin, dob_max: dobMax } : {}),
         season_id: body.season_id,
         camp_type_id: body.camp_type_id,
         slug: body.slug.trim(),

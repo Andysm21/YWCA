@@ -11,6 +11,9 @@ export type CampInput = {
   date_end: string;
   description: string;
   cover_photo_url?: string | null;
+  /** Optional allowed birth-date range for registration, YYYY-MM-DD. */
+  dob_min?: string | null;
+  dob_max?: string | null;
 };
 
 const SLUG_PATTERN = /^[a-z0-9]+(-[a-z0-9]+)*$/;
@@ -74,6 +77,13 @@ export function validateCampInput(input: CampInput): string[] {
       errors.push('Start date cannot be after end date.');
     }
   }
+
+  const dobPattern = /^\d{4}-\d{2}-\d{2}$/;
+  const dobMin = input.dob_min?.trim() || '';
+  const dobMax = input.dob_max?.trim() || '';
+  if (dobMin && (!dobPattern.test(dobMin) || Number.isNaN(new Date(dobMin).getTime()))) errors.push('Earliest birth date must be a valid date.');
+  if (dobMax && (!dobPattern.test(dobMax) || Number.isNaN(new Date(dobMax).getTime()))) errors.push('Latest birth date must be a valid date.');
+  if (dobMin && dobMax && dobMin > dobMax) errors.push('Earliest birth date cannot be after the latest birth date.');
 
   if (!input.description.trim()) errors.push('Description is required.');
 

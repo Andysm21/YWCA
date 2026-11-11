@@ -1,6 +1,7 @@
 import 'server-only';
 import { cookies } from 'next/headers';
 import { createClient as createServerClient } from '@/utils/supabase/server';
+import { newColumnsReady } from '@/lib/schema-features';
 
 export type RegistrationStatus = 'pending_payment' | 'waitlisted' | 'payment_submitted' | 'confirmed' | 'refunded';
 export type RegistrationEmailStatus = 'pending' | 'sent' | 'failed';
@@ -19,12 +20,16 @@ export type RegistrationRow = {
   created_at: string;
   email_status: RegistrationEmailStatus;
   email_failure_reason: string | null;
+  date_of_birth: string | null;
+  academic_year: string | null;
+  tshirt_size: string | null;
+  bus_pickup?: string | null;
   camps: { name: string; price_egp: number; slug: string } | null;
 };
 
 // camps.name doesn't exist anymore — always resolved via camp_types(name).
 const REGISTRATION_LIST_COLUMNS =
-  'id, registration_number, camp_id, status, waitlist_position, camper_name, parent_name, parent_email, email, mobile_phone, created_at, email_status, email_failure_reason, camps(price_egp, slug, camp_types(name))';
+  'id, registration_number, camp_id, status, waitlist_position, camper_name, parent_name, parent_email, email, mobile_phone, created_at, email_status, email_failure_reason, date_of_birth, academic_year, tshirt_size, camps(price_egp, slug, camp_types(name))';
 
 /** Supabase returns a to-one FK join as an object; normalize defensively (see lib/queries/camps.ts for why). */
 function flattenCampTypeName(campsRel: any): { name: string; price_egp: number; slug: string } | null {
@@ -55,7 +60,7 @@ export async function getRegistrationsPage({ campId, status, page = 1, pageSize 
 
   let query = supabase
     .from('registrations')
-    .select(REGISTRATION_LIST_COLUMNS, { count: 'exact' });
+    .select(((await newColumnsReady()) ? REGISTRATION_LIST_COLUMNS.replace('tshirt_size,', 'tshirt_size, bus_pickup,') : REGISTRATION_LIST_COLUMNS) as string, { count: 'exact' });
 
   // Waitlist view: strict FIFO order (position ascending), not newest-first —
   // this is what makes the status filter double as the "waitlist view".

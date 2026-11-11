@@ -4,7 +4,8 @@ import { sendPendingPaymentEmail, sendWaitlistEmail } from '@/lib/email';
 import { recordEmailResult } from '@/lib/registration-email';
 import { getMeetingPoints } from '@/lib/queries/site-settings';
 import { isRateLimited } from '@/lib/rate-limit';
-import { validateRegistrationInput, gradeOptionsForCamp } from '@/lib/validation/registration';
+import { newColumnsReady } from '@/lib/schema-features';
+import { validateRegistrationInput, gradeOptionsForCamp, tshirtSizesForCamp } from '@/lib/validation/registration';
 
 export async function POST(request: Request) {
   const ip = request.headers.get('x-forwarded-for')?.split(',')[0]?.trim() ?? 'unknown';
@@ -15,7 +16,7 @@ export async function POST(request: Request) {
   const body = await request.json();
 
   const required = [
-    'campSlug', 'camperName', 'dateOfBirth', 'mobilePhone', 'email', 'school', 'academicYear', 'tshirtSize',
+    'campSlug', 'camperName', 'dateOfBirth', 'mobilePhone', 'email', 'school', 'academicYear', 'tshirtSize', 'busPickup',
     'parentName', 'parentMobile', 'parentEmail', 'emergencyContactName', 'emergencyContactNumber',
   ];
   for (const field of required) {
@@ -30,24 +31,44 @@ export async function POST(request: Request) {
   }
 
   const supabase = createServiceClient();
+  const newColumns = await newColumnsReady();
 
   // Fresh read, never trust the ISR-cached camp/spots-left the client saw —
   // capacity can have changed in the last few minutes of cache staleness.
-  const { data: camp, error: campError } = await supabase
+  type CampRow = {
+    id: string; slug: string; capacity: number; status: string; price_egp: number;
+    date_start: string; date_end: string; dob_min?: string | null; dob_max?: string | null;
+    camp_types: { name: string } | { name: string }[] | null;
+  };
+  const campSelect: string = newColumns
+    ? 'id, slug, capacity, status, price_egp, date_start, date_end, dob_min, dob_max, camp_types(name)'
+    : 'id, slug, capacity, status, price_egp, date_start, date_end, camp_types(name)';
+  const { data: campData, error: campError } = await supabase
     .from('camps')
-    .select('id, slug, capacity, status, price_egp, date_start, date_end, camp_types(name)')
+    .select(campSelect)
     .eq('slug', body.campSlug)
     .maybeSingle();
+  const camp = campData as unknown as CampRow | null;
 
   if (campError) return NextResponse.json({ error: campError.message }, { status: 500 });
   if (!camp || camp.status === 'closed') {
     return NextResponse.json({ error: 'This camp is no longer accepting registrations.' }, { status: 409 });
   }
 
-  const campTypeRel = camp.camp_types as { name: string } | { name: string }[] | null;
+  const campTypeRel = camp.camp_types;
   const campTypeName = (Array.isArray(campTypeRel) ? campTypeRel[0]?.name : campTypeRel?.name) ?? '';
   if (!gradeOptionsForCamp(campTypeName).includes(String(body.academicYear).trim())) {
     return NextResponse.json({ error: `That grade isn't available for ${campTypeName || 'this camp'}.` }, { status: 400 });
+  }
+
+  if (!tshirtSizesForCamp(campTypeName).includes(String(body.tshirtSize).trim())) {
+    return NextResponse.json({ error: 'Please choose a valid T-shirt size for this camp.' }, { status: 400 });
+  }
+  const dobMin = camp.dob_min ?? null;
+  const dobMax = camp.dob_max ?? null;
+  const dob = String(body.dateOfBirth).slice(0, 10);
+  if ((dobMin && dob < dobMin) || (dobMax && dob > dobMax)) {
+    return NextResponse.json({ error: `For this camp, the date of birth must be ${dobMin && dobMax ? `between ${dobMin} and ${dobMax}` : dobMin ? `on or after ${dobMin}` : `on or before ${dobMax}`}.` }, { status: 400 });
   }
 
   const { count: filledCount, error: countError } = await supabase
@@ -88,6 +109,7 @@ export async function POST(request: Request) {
       school: body.school,
       academic_year: body.academicYear,
       tshirt_size: body.tshirtSize,
+      ...(newColumns ? { bus_pickup: body.busPickup } : {}),
       parent_name: body.parentName,
       parent_mobile: body.parentMobile,
       alternate_mobile: body.alternateMobile || null,
@@ -127,6 +149,7 @@ export async function POST(request: Request) {
           campSlug: camp.slug,
           priceEgp: camp.price_egp,
           meetingPoints: await getMeetingPoints(),
+          busPickup: String(body.busPickup),
         });
 
     await recordEmailResult(supabase, registration.id, result);

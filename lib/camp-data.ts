@@ -43,6 +43,9 @@ export type Camp = {
   ageMin: number;
   ageMax: number;
   ageRange: string;
+  /** Allowed birth-date range for registration (YYYY-MM-DD); null = no limit. */
+  dobMin: string | null;
+  dobMax: string | null;
   /**
    * capacity/spotsLeft carry the real numbers everywhere internally, but
    * guest-facing query exports (lib/queries/camps.ts: getOpenCamps,
