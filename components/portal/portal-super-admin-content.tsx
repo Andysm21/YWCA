@@ -430,19 +430,25 @@ function CampForm({
     }
   }
 
-  /** Birth-date range matching the age range as of the camp start date. */
+  /**
+   * Birth-date range matching the min/max age, counted as of the camp start date
+   * (or today when no start date is set yet).
+   */
   function suggestDobRange() {
-    const start = form.date_start ? new Date(form.date_start) : null;
     const aMin = parseInt(form.age_min, 10);
     const aMax = parseInt(form.age_max, 10);
-    if (!start || Number.isNaN(start.getTime()) || !Number.isInteger(aMin) || !Number.isInteger(aMax)) {
-      setErrors(['Set the start date and the min/max age first, then use "Suggest from ages".']);
+    if (!Number.isInteger(aMin) || !Number.isInteger(aMax) || aMin < 0 || aMax < aMin) {
+      setErrors(['Enter a valid Min age and Max age first.']);
       return;
     }
     setErrors([]);
+    const parsed = form.date_start ? new Date(form.date_start) : null;
+    const ref = parsed && !Number.isNaN(parsed.getTime()) ? parsed : new Date();
     const fmt = (d: Date) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
-    const latest = new Date(start.getFullYear() - aMin, start.getMonth(), start.getDate());
-    const earliest = new Date(start.getFullYear() - aMax - 1, start.getMonth(), start.getDate() + 1);
+    // Youngest allowed camper: exactly Min age on the reference date -> latest birth date.
+    const latest = new Date(ref.getFullYear() - aMin, ref.getMonth(), ref.getDate());
+    // Oldest allowed camper: still Max age (turns Max+1 the day after) -> earliest birth date.
+    const earliest = new Date(ref.getFullYear() - aMax - 1, ref.getMonth(), ref.getDate() + 1);
     setForm((f) => ({ ...f, dob_min: fmt(earliest), dob_max: fmt(latest) }));
   }
 
@@ -508,7 +514,7 @@ function CampForm({
           <Button type="button" variant="outline" size="sm" className="rounded-full border-border/60 bg-transparent" onClick={suggestDobRange}>Suggest from ages</Button>
         </div>
         <p className="text-xs text-muted-foreground sm:col-span-2 lg:col-span-3">
-          Optional. On the registration form, birth dates before the earliest or after the latest date are disabled. Leave empty for no limit.
+          Optional. On the registration form, birth dates before the earliest or after the latest date are disabled. Suggest from ages fills both from the Min and Max age (counted at the camp start date, or today if no start date is set). Leave empty for no limit.
         </p>
         <div className="space-y-2 sm:col-span-2 lg:col-span-3">
           <Label>Description</Label>
