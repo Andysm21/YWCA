@@ -81,7 +81,7 @@ export function CampCard({ camp }: { camp: Camp }) {
         </div>
         <div className="flex items-center gap-2">
           <Button asChild size="sm" variant="ghost" className="rounded-full text-muted-foreground hover:text-foreground">
-            <Link href={`/camps/${camp.slug}`}>Details</Link>
+            <Link href={`/camps/${camp.slug}`} aria-label={`Details for ${camp.name}`}>Details</Link>
           </Button>
           <Button asChild size="sm" variant={full ? 'outline' : 'default'} className={cn('rounded-full', !full && 'glow-orange')}>
             <Link href={`/register/${camp.slug}`}>

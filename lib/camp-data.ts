@@ -192,17 +192,20 @@ export const historyTimeline = [
   { year: '2019', title: 'New campsite', description: 'The Camp moved to its new campsite: Paradise, Ras Sudr.' },
 ];
 
+// Dates are plain "YYYY-MM-DD" strings (UTC midnight). Format in UTC so the server
+// (UTC) and every visitor's browser (any timezone) produce identical text —
+// otherwise hydration fails for visitors west of UTC and dates can show a day early.
 export function formatDateRange(start: string, end: string) {
   const s = new Date(start);
   const e = new Date(end);
-  const sameMonth = s.getMonth() === e.getMonth();
-  const sFmt = new Intl.DateTimeFormat('en-US', { month: 'short', day: 'numeric' });
-  const eFmt = new Intl.DateTimeFormat('en-US', { month: sameMonth ? undefined : 'short', day: 'numeric' });
-  return `${sFmt.format(s)} – ${eFmt.format(e)}, ${e.getFullYear()}`;
+  const sameMonth = s.getUTCMonth() === e.getUTCMonth();
+  const sFmt = new Intl.DateTimeFormat('en-US', { month: 'short', day: 'numeric', timeZone: 'UTC' });
+  const eFmt = new Intl.DateTimeFormat('en-US', { month: sameMonth ? undefined : 'short', day: 'numeric', timeZone: 'UTC' });
+  return `${sFmt.format(s)} – ${eFmt.format(e)}, ${e.getUTCFullYear()}`;
 }
 
 export function formatDate(date: string) {
-  return new Intl.DateTimeFormat('en-US', { month: 'long', day: 'numeric', year: 'numeric' }).format(new Date(date));
+  return new Intl.DateTimeFormat('en-US', { month: 'long', day: 'numeric', year: 'numeric', timeZone: 'UTC' }).format(new Date(date));
 }
 
 export function formatPrice(price: number) {

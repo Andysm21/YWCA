@@ -73,7 +73,7 @@ function Tile({ img, index, onOpen }: { img: GalleryImageRow; index: number; onO
         className="group relative block w-full overflow-hidden rounded-2xl border border-border/60 bg-card text-left shadow-lg transition-[transform,box-shadow] duration-300 ease-out hover:shadow-[0_20px_60px_-15px_hsl(var(--primary)/0.55)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-primary"
       >
         {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img src={optimizedImage(img.image_url, 640)} srcSet={optimizedSrcSet(img.image_url, [384, 640, 828])} sizes="(min-width: 1024px) 33vw, (min-width: 640px) 50vw, 100vw" alt={img.caption ?? 'Camp photo'} loading="lazy" decoding="async" className="block h-auto w-full transition-transform duration-700 group-hover:scale-110" />
+        <img src={optimizedImage(img.image_url, 640, 65)} srcSet={optimizedSrcSet(img.image_url, [384, 640, 828], 65)} sizes="(min-width: 1024px) 28vw, (min-width: 640px) 45vw, 75vw" alt={img.caption ?? 'Camp photo'} loading="lazy" decoding="async" className="block h-auto w-full transition-transform duration-700 group-hover:scale-110" />
         <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-black/70 via-black/0 to-transparent opacity-0 transition-opacity duration-300 group-hover:opacity-100" />
         <div className="pointer-events-none absolute right-3 top-3 flex h-9 w-9 items-center justify-center rounded-full bg-white/90 text-black opacity-0 shadow-lg transition-all duration-300 group-hover:scale-110 group-hover:opacity-100">
           <Expand className="h-4 w-4" />
