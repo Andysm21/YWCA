@@ -62,7 +62,7 @@ export function HomeHero({ seasons = [] }: { seasons?: Season[] }) {
             </Button>
           </div>
 
-          <dl className="mt-16 grid w-full max-w-3xl grid-cols-2 gap-6 border-t border-border/40 pt-8 sm:grid-cols-4 animate-fade-up [animation-delay:240ms]">
+          <div className="mt-16 grid w-full max-w-3xl grid-cols-2 gap-6 border-t border-border/40 pt-8 sm:grid-cols-4 animate-fade-up [animation-delay:240ms]">
             {[
               { icon: CalendarCheck, value: '1940s', label: 'YWCA camps began' },
               { icon: MapPin, value: 'Ras Sudr', label: 'Paradise campsite' },
@@ -71,11 +71,11 @@ export function HomeHero({ seasons = [] }: { seasons?: Season[] }) {
             ].map((s) => (
               <div key={s.label} className="flex flex-col items-center gap-1.5 sm:items-start">
                 <s.icon className="h-5 w-5 text-primary" />
-                <dt className="font-display text-2xl font-bold text-foreground">{s.value}</dt>
-                <dd className="text-sm text-muted-foreground">{s.label}</dd>
+                <p className="font-display text-2xl font-bold text-foreground">{s.value}</p>
+                <p className="text-sm text-muted-foreground">{s.label}</p>
               </div>
             ))}
-          </dl>
+          </div>
         </div>
       </div>
 

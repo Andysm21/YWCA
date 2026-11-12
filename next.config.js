@@ -3,7 +3,12 @@ const nextConfig = {
   eslint: {
     ignoreDuringBuilds: true,
   },
-  images: { unoptimized: true },
+  images: {
+    // Vercel image optimizer: resizes + converts to WebP/AVIF (used by logos and gallery photos).
+    formats: ['image/avif', 'image/webp'],
+    minimumCacheTTL: 2592000,
+    remotePatterns: [{ protocol: 'https', hostname: '*.supabase.co', pathname: '/storage/v1/object/public/**' }],
+  },
   async headers() {
     const longCache = [{ key: 'Cache-Control', value: 'public, max-age=2592000, stale-while-revalidate=86400' }];
     return [

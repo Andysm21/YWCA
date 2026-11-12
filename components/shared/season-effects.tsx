@@ -125,7 +125,7 @@ export function SeasonOpenBanner({ seasons }: { seasons: OpenSeason[] }) {
             href="/camps"
             className={cn(
               'group relative inline-flex items-center gap-3 overflow-hidden rounded-full px-6 py-3 text-sm font-extrabold uppercase tracking-[0.12em] text-white shadow-xl transition-transform duration-300 hover:scale-[1.03] sm:px-8 sm:py-3.5 sm:text-base animate-fade-in',
-              'bg-gradient-to-r animate-banner-shimmer',
+              'bg-gradient-to-r',
               winter
                 ? 'from-sky-500 via-cyan-300 to-sky-500 shadow-sky-500/40 [text-shadow:0_1px_2px_rgba(0,40,90,0.45)]'
                 : 'from-brand-orange via-brand-gold to-brand-orange shadow-brand-orange/40 [text-shadow:0_1px_2px_rgba(90,30,0,0.4)]'
