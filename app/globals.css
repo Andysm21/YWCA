@@ -250,3 +250,15 @@
   .animate-marquee-rev, .animate-marquee-slow, .animate-wave-1, .animate-wave-2, .animate-wave-3,
   .animate-banner-shimmer, .animate-float-soft { animation: none; }
 }
+
+/* iOS Safari renders date inputs wider than their container unless told otherwise */
+input[type="date"] {
+  -webkit-appearance: none;
+  appearance: none;
+  min-width: 0;
+  max-width: 100%;
+  width: 100%;
+  display: block;
+  text-align: left;
+}
+input[type="date"]::-webkit-date-and-time-value { text-align: left; }

@@ -184,7 +184,7 @@ export function RegisterContent({ camp }: { camp: Camp }) {
             <div className="grid gap-5 sm:grid-cols-2">
               <div className="space-y-2">
                 <Label htmlFor="dateOfBirth">Date of birth *</Label>
-                <Input id="dateOfBirth" type="date" required min={camp.dobMin ?? undefined} max={camp.dobMax ?? undefined} className="rounded-xl bg-background/50" value={step1.dateOfBirth} onChange={(e) => setStep1({ ...step1, dateOfBirth: e.target.value })} />
+                <Input id="dateOfBirth" type="date" required min={camp.dobMin ?? undefined} max={camp.dobMax ?? undefined} className="block w-full min-w-0 max-w-full appearance-none rounded-xl bg-background/50" value={step1.dateOfBirth} onChange={(e) => setStep1({ ...step1, dateOfBirth: e.target.value })} />
                 {(camp.dobMin || camp.dobMax) && (
                   <p className={cn('text-xs', step1.dateOfBirth && !dobOk ? 'text-rose-400' : 'text-muted-foreground')}>
                     {camp.dobMin && camp.dobMax ? `For this camp: born between ${camp.dobMin} and ${camp.dobMax}.` : camp.dobMin ? `For this camp: born on or after ${camp.dobMin}.` : `For this camp: born on or before ${camp.dobMax}.`}
