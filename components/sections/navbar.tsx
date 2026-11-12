@@ -36,7 +36,7 @@ export function Navbar() {
   return (
     <header className={cn(
       'fixed inset-x-0 top-0 z-50 transition-all duration-300 print:hidden',
-      scrolled ? 'border-b border-border/60 bg-background/80 backdrop-blur-xl' : 'border-b border-transparent bg-transparent'
+      scrolled ? 'border-b border-border/60 bg-background/95 lg:bg-background/80 lg:backdrop-blur-xl' : 'border-b border-transparent bg-transparent'
     )}>
       <nav className="mx-auto flex h-16 max-w-7xl items-center justify-between px-4 lg:px-8">
         <Link href="/" className="group flex items-center gap-2.5">
@@ -73,7 +73,7 @@ export function Navbar() {
       </nav>
 
       {open && (
-        <div className="border-b border-border/60 bg-background/95 backdrop-blur-xl lg:hidden">
+        <div className="border-b border-border/60 bg-background lg:hidden">
           <div className="flex flex-col gap-1 px-4 py-4 max-h-[80vh] overflow-y-auto">
             {navLinks.map((l) => {
               const active = pathname === l.href || (l.href !== '/' && pathname.startsWith(l.href));

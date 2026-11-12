@@ -315,7 +315,7 @@ function EmptyCalendarOverlay() {
   return (
     <div className="absolute inset-0 z-10 flex items-center justify-center p-4">
       <div className="relative w-full max-w-md overflow-hidden rounded-3xl border border-primary/40 bg-card/95 p-8 text-center shadow-2xl backdrop-blur">
-        <div className="pointer-events-none absolute -inset-x-10 -top-20 h-40 rounded-full bg-gradient-to-r from-brand-orange/40 via-brand-gold/40 to-brand-ember/40 blur-3xl" />
+        <div className="pointer-events-none absolute -inset-x-10 -top-20 hidden h-40 rounded-full bg-gradient-to-r from-brand-orange/40 via-brand-gold/40 to-brand-ember/40 blur-3xl sm:block" />
         <div className="relative">
           <div className="relative mx-auto mb-5 flex h-20 w-20 items-center justify-center">
             <span className="absolute inset-0 animate-ping rounded-full bg-primary/25" />

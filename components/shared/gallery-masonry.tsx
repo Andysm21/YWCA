@@ -11,7 +11,7 @@ function Showcase({ images, onOpen }: { images: GalleryImageRow[]; onOpen: (i: n
   // Repeat until there is enough content to fill a wide screen, then double for a seamless loop.
   const base = React.useMemo(() => {
     const out: { img: GalleryImageRow; index: number }[] = [];
-    while (out.length < 10) images.forEach((img, index) => out.length < 40 && out.push({ img, index }));
+    while (out.length < 8) images.forEach((img, index) => out.length < 12 && out.push({ img, index }));
     return out;
   }, [images]);
   const rowA = base;
@@ -30,7 +30,7 @@ function Showcase({ images, onOpen }: { images: GalleryImageRow[]; onOpen: (i: n
             aria-label={img.caption ?? 'Open photo'}
           >
             {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src={img.image_url} alt={img.caption ?? 'Camp photo'} loading="lazy" className="h-36 w-auto rounded-xl object-cover sm:h-52" />
+            <img src={img.image_url} alt={img.caption ?? 'Camp photo'} loading="lazy" decoding="async" className="h-36 w-auto rounded-xl object-cover sm:h-52" />
           </button>
         ))}
       </div>
@@ -72,7 +72,7 @@ function Tile({ img, index, onOpen }: { img: GalleryImageRow; index: number; onO
         className="group relative block w-full overflow-hidden rounded-2xl border border-border/60 bg-card text-left shadow-lg transition-[transform,box-shadow] duration-300 ease-out hover:shadow-[0_20px_60px_-15px_hsl(var(--primary)/0.55)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-primary"
       >
         {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img src={img.image_url} alt={img.caption ?? 'Camp photo'} loading="lazy" className="block h-auto w-full transition-transform duration-700 group-hover:scale-110" />
+        <img src={img.image_url} alt={img.caption ?? 'Camp photo'} loading="lazy" decoding="async" className="block h-auto w-full transition-transform duration-700 group-hover:scale-110" />
         <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-black/70 via-black/0 to-transparent opacity-0 transition-opacity duration-300 group-hover:opacity-100" />
         <div className="pointer-events-none absolute right-3 top-3 flex h-9 w-9 items-center justify-center rounded-full bg-white/90 text-black opacity-0 shadow-lg transition-all duration-300 group-hover:scale-110 group-hover:opacity-100">
           <Expand className="h-4 w-4" />

@@ -24,7 +24,7 @@ export function SnowEffect() {
     let t = 0;
 
     function resize() {
-      const dpr = Math.min(window.devicePixelRatio || 1, 2);
+      const dpr = 1; // snow doesn't need retina; saves 4x pixels on phones
       w = window.innerWidth;
       h = window.innerHeight;
       canvas!.width = w * dpr;
@@ -32,7 +32,7 @@ export function SnowEffect() {
       canvas!.style.width = `${w}px`;
       canvas!.style.height = `${h}px`;
       ctx!.setTransform(dpr, 0, 0, dpr, 0, 0);
-      const count = Math.min(150, Math.round(w / 9));
+      const count = Math.min(w < 640 ? 45 : 110, Math.round(w / 10));
       flakes = Array.from({ length: count }, () => ({
         x: Math.random() * w,
         y: Math.random() * h,
@@ -97,13 +97,13 @@ export function TideWaves() {
   ];
   return (
     <>
-      <div aria-hidden className="pointer-events-none absolute -right-24 -top-24 h-96 w-96 rounded-full bg-gradient-to-br from-brand-gold/50 via-brand-orange/25 to-transparent blur-3xl" />
+      <div aria-hidden className="pointer-events-none absolute -right-24 -top-24 hidden h-96 w-96 rounded-full bg-gradient-to-br from-brand-gold/50 via-brand-orange/25 to-transparent blur-3xl sm:block" />
       <div aria-hidden className="pointer-events-none absolute inset-x-0 bottom-14 z-0 h-28 overflow-hidden sm:h-32">
         {layers.map((l) => (
           <div
             key={l.fill}
-            className={cn('absolute inset-x-0 bottom-0 bg-repeat-x', l.cls)}
-            style={{ backgroundImage: wavePath(l.fill), backgroundSize: '1200px 100%' }}
+            className={cn('absolute bottom-0 right-0 bg-repeat-x', l.cls)}
+            style={{ left: '-1200px', backgroundImage: wavePath(l.fill), backgroundSize: '1200px 100%' }}
           />
         ))}
       </div>

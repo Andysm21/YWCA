@@ -215,8 +215,8 @@
   to { transform: translateX(0); }
 }
 @keyframes wave-slide {
-  from { background-position-x: 0; }
-  to { background-position-x: 1200px; }
+  from { transform: translate3d(0, 0, 0); }
+  to { transform: translate3d(1200px, 0, 0); }
 }
 @keyframes banner-shimmer {
   0% { background-position: 0% 50%; }
@@ -240,6 +240,11 @@
 .animate-lightbox-in { animation: lightbox-in 0.35s cubic-bezier(0.16, 1, 0.3, 1); }
 .marquee-pause:hover .animate-marquee-rev,
 .marquee-pause:hover .animate-marquee-slow { animation-play-state: paused; }
+
+@media (max-width: 640px) {
+  .animate-banner-shimmer { animation: none; }
+}
+.animate-wave-1, .animate-wave-2, .animate-wave-3, .animate-marquee-rev, .animate-marquee-slow { will-change: transform; }
 
 @media (prefers-reduced-motion: reduce) {
   .animate-marquee-rev, .animate-marquee-slow, .animate-wave-1, .animate-wave-2, .animate-wave-3,
