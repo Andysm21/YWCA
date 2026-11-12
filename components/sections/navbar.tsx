@@ -61,7 +61,7 @@ export function Navbar() {
         <div className="flex items-center gap-2">
           <ModeToggle />
           <Button asChild size="sm" className="hidden rounded-full sm:inline-flex">
-            <Link href="/camps">
+            <Link href="/camps" aria-label="Register for a camp">
               Register
               <ArrowRight className="ml-1.5 h-4 w-4" />
             </Link>
@@ -86,7 +86,7 @@ export function Navbar() {
             })}
             <div className="mt-2">
               <Button asChild size="sm" className="w-full rounded-full">
-                <Link href="/camps">Register</Link>
+                <Link href="/camps" aria-label="Register for a camp">Register</Link>
               </Button>
             </div>
           </div>

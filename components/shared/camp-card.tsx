@@ -84,7 +84,7 @@ export function CampCard({ camp }: { camp: Camp }) {
             <Link href={`/camps/${camp.slug}`} aria-label={`Details for ${camp.name}`}>Details</Link>
           </Button>
           <Button asChild size="sm" variant={full ? 'outline' : 'default'} className={cn('rounded-full', !full && 'glow-orange')}>
-            <Link href={`/register/${camp.slug}`}>
+            <Link href={`/register/${camp.slug}`} aria-label={`${full ? 'Join the waitlist for' : 'Register for'} ${camp.name}`}>
               {full ? 'Waitlist' : 'Register'}
               <ArrowUpRight className="ml-1.5 h-4 w-4" />
             </Link>

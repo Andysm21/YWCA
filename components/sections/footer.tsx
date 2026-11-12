@@ -5,7 +5,7 @@ import { DEFAULT_INSTAGRAM_URL } from '@/lib/site-settings-shared';
 import { Logo } from '@/components/logo';
 
 const nav = {
-  Camps: [{ label: 'All Camps', href: '/camps' }, { label: 'Calendar', href: '/calendar' }, { label: 'Register', href: '/camps' }],
+  Camps: [{ label: 'All Camps', href: '/camps' }, { label: 'Calendar', href: '/calendar' }, { label: 'Registration', href: '/camps' }],
   About: [{ label: 'Our mission', href: '/about' }, { label: 'Gallery', href: '/gallery' }],
   Resources: [{ label: 'FAQ', href: '/faq' }, { label: 'Packing List', href: '/packing' }],
 };

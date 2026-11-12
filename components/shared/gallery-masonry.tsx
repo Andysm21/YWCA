@@ -31,7 +31,7 @@ function Showcase({ images, onOpen }: { images: GalleryImageRow[]; onOpen: (i: n
             aria-label={img.caption ?? 'Open photo'}
           >
             {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src={optimizedImage(img.image_url, 384, 70)} srcSet={optimizedSrcSet(img.image_url, [384, 640], 70)} sizes="(min-width: 640px) 320px, 220px" alt={img.caption ?? 'Camp photo'} loading="lazy" decoding="async" className="h-36 w-auto rounded-xl object-cover sm:h-52" />
+            <img src={optimizedImage(img.image_url, 384, 70)} srcSet={optimizedSrcSet(img.image_url, [384, 640], 70)} sizes="(min-width: 640px) 320px, 220px" alt={img.caption ?? 'Camp photo'} width={400} height={300} loading="lazy" decoding="async" className="h-36 w-auto rounded-xl object-cover sm:h-52" />
           </button>
         ))}
       </div>
@@ -73,7 +73,7 @@ function Tile({ img, index, onOpen }: { img: GalleryImageRow; index: number; onO
         className="group relative block w-full overflow-hidden rounded-2xl border border-border/60 bg-card text-left shadow-lg transition-[transform,box-shadow] duration-300 ease-out hover:shadow-[0_20px_60px_-15px_hsl(var(--primary)/0.55)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-primary"
       >
         {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img src={optimizedImage(img.image_url, 640, 65)} srcSet={optimizedSrcSet(img.image_url, [384, 640, 828], 65)} sizes="(min-width: 1024px) 28vw, (min-width: 640px) 45vw, 75vw" alt={img.caption ?? 'Camp photo'} loading="lazy" decoding="async" className="block h-auto w-full transition-transform duration-700 group-hover:scale-110" />
+        <img src={optimizedImage(img.image_url, 640, 65)} srcSet={optimizedSrcSet(img.image_url, [384, 640, 828], 65)} sizes="(min-width: 1024px) 28vw, (min-width: 640px) 45vw, 75vw" alt={img.caption ?? 'Camp photo'} width={640} height={480} loading="lazy" decoding="async" className="block h-auto w-full transition-transform duration-700 group-hover:scale-110" />
         <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-black/70 via-black/0 to-transparent opacity-0 transition-opacity duration-300 group-hover:opacity-100" />
         <div className="pointer-events-none absolute right-3 top-3 flex h-9 w-9 items-center justify-center rounded-full bg-white/90 text-black opacity-0 shadow-lg transition-all duration-300 group-hover:scale-110 group-hover:opacity-100">
           <Expand className="h-4 w-4" />
