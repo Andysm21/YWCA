@@ -566,10 +566,10 @@ function CampsTab({
     router.refresh();
   }
 
-  async function handleDelete(c: Camp) {
+  async function handleDelete(c: Camp, force: boolean) {
     setDeletingId(c.id);
     try {
-      const res = await fetch(`/api/portal/camps/${c.id}`, { method: 'DELETE' });
+      const res = await fetch(`/api/portal/camps/${c.id}${force ? '?force=true' : ''}`, { method: 'DELETE' });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || 'Failed to delete camp');
       router.refresh();
@@ -655,13 +655,14 @@ function CampsTab({
                       <Button
                         size="icon"
                         variant="ghost"
-                        disabled={regCount > 0 || deletingId === c.id}
-                        title={regCount > 0 ? `Cannot delete — ${regCount} registration${regCount === 1 ? '' : 's'} exist` : undefined}
+                        disabled={deletingId === c.id}
                         className="h-8 w-8 rounded-full text-rose-400 hover:text-rose-300 disabled:text-muted-foreground/40"
                         onClick={() => onConfirm({
                           title: `Delete ${c.name}?`,
-                          description: 'This will permanently remove the camp. This action cannot be undone.',
-                          onConfirm: () => handleDelete(c),
+                          description: regCount > 0
+                            ? `WARNING: this camp has ${regCount} registration${regCount === 1 ? '' : 's'}. Deleting it will also permanently delete ${regCount === 1 ? 'that registration' : `all ${regCount} registrations`} linked to it. This cannot be undone.`
+                            : 'This will permanently remove the camp. This action cannot be undone.',
+                          onConfirm: () => handleDelete(c, regCount > 0),
                         })}
                       >
                         {deletingId === c.id ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Trash2 className="h-3.5 w-3.5" />}

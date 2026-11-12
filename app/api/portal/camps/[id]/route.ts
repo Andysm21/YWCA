@@ -79,7 +79,7 @@ export async function PATCH(request: Request, { params }: { params: { id: string
   }
 }
 
-export async function DELETE(_request: Request, { params }: { params: { id: string } }) {
+export async function DELETE(request: Request, { params }: { params: { id: string } }) {
   const auth = await requireSuperAdmin();
   if (!auth.ok) return auth.response;
   const { supabase, userId } = auth;
@@ -94,9 +94,11 @@ export async function DELETE(_request: Request, { params }: { params: { id: stri
       .eq('camp_id', params.id);
     if (countError) return NextResponse.json({ error: countError.message }, { status: 500 });
 
-    if (count && count > 0) {
+    const force = new URL(request.url).searchParams.get('force') === 'true';
+    const regCount = count ?? 0;
+    if (regCount > 0 && !force) {
       return NextResponse.json(
-        { error: `Cannot delete this camp — it has ${count} registration${count === 1 ? '' : 's'}. Close or archive it instead of deleting.` },
+        { error: `This camp has ${regCount} registration${regCount === 1 ? '' : 's'}. Confirm to delete the camp together with all of them.`, registrations: regCount },
         { status: 409 }
       );
     }
@@ -108,6 +110,13 @@ export async function DELETE(_request: Request, { params }: { params: { id: stri
       .maybeSingle();
     if (fetchError) return NextResponse.json({ error: fetchError.message }, { status: 500 });
     if (!camp) return NextResponse.json({ error: 'Camp not found' }, { status: 404 });
+
+    if (regCount > 0) {
+      // Explicitly confirmed by Super Admin: remove linked registrations first
+      // (registration_documents cascade; email log rows are set null).
+      const { error: regDelError } = await supabase.from('registrations').delete().eq('camp_id', params.id);
+      if (regDelError) return NextResponse.json({ error: regDelError.message }, { status: 500 });
+    }
 
     const { error: deleteError } = await supabase.from('camps').delete().eq('id', params.id);
     if (deleteError) {
@@ -124,7 +133,7 @@ export async function DELETE(_request: Request, { params }: { params: { id: stri
 
     const typeRel = camp.camp_types as { name: string } | { name: string }[] | null;
     const name = (Array.isArray(typeRel) ? typeRel[0]?.name : typeRel?.name) ?? 'Unknown Camp';
-    await writeAuditLog(supabase, userId, 'delete_camp', 'camp', camp.id, { name, slug: camp.slug });
+    await writeAuditLog(supabase, userId, 'delete_camp', 'camp', camp.id, { name, slug: camp.slug, registrations_deleted: regCount });
 
     return NextResponse.json({ success: true });
   } catch (err) {
