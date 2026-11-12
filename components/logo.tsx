@@ -61,8 +61,15 @@ export function Logo({
 
   return (
     <div className={cn('flex shrink-0 items-center', className)} style={{ gap: Math.round(px * 0.08) }}>
-      {/* eslint-disable-next-line @next/next/no-img-element */}
-      <img src="/ywca-logo.png" alt="YWCA" width={Math.round(triH * YWCA_RATIO)} height={triH} style={{ width: Math.round(triH * YWCA_RATIO), height: triH }} className="shrink-0 object-contain" />
+      <Image
+        src="/ywca-logo.png"
+        alt="YWCA"
+        width={Math.round(triH * YWCA_RATIO)}
+        height={triH}
+        sizes={`${Math.round(triH * YWCA_RATIO)}px`}
+        priority={priority}
+        className="shrink-0 object-contain"
+      />
       {campMark}
     </div>
   );
