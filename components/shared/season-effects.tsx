@@ -32,7 +32,7 @@ export function SnowEffect() {
       canvas!.style.width = `${w}px`;
       canvas!.style.height = `${h}px`;
       ctx!.setTransform(dpr, 0, 0, dpr, 0, 0);
-      const count = Math.min(w < 640 ? 45 : 110, Math.round(w / 10));
+      const count = Math.min(w < 640 ? 28 : 100, Math.round(w / 10));
       flakes = Array.from({ length: count }, () => ({
         x: Math.random() * w,
         y: Math.random() * h,
@@ -43,7 +43,10 @@ export function SnowEffect() {
       }));
     }
 
-    function draw() {
+    let last = 0;
+    function draw(now = 0) {
+      if (now && now - last < 33) { raf = requestAnimationFrame(draw); return; }
+      last = now;
       const dark = document.documentElement.classList.contains('dark');
       ctx!.clearRect(0, 0, w, h);
       ctx!.fillStyle = dark ? 'rgba(255,255,255,0.85)' : 'rgba(120,165,225,0.8)';

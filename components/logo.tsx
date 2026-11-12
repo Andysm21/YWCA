@@ -43,6 +43,7 @@ export function Logo({
         fill
         className="object-contain dark:hidden"
         priority={priority}
+        unoptimized
         sizes={`${px}px`}
       />
       <Image
@@ -52,6 +53,7 @@ export function Logo({
         fill
         className="hidden object-contain dark:block"
         priority={priority}
+        unoptimized
         sizes={`${px}px`}
       />
     </div>
@@ -68,6 +70,7 @@ export function Logo({
         height={triH}
         sizes={`${Math.round(triH * YWCA_RATIO)}px`}
         priority={priority}
+        unoptimized
         className="shrink-0 object-contain"
       />
       {campMark}

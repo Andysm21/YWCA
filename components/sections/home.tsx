@@ -26,10 +26,12 @@ export function HomeHero({ seasons = [] }: { seasons?: Season[] }) {
       {hasWinter && <SnowEffect />}
       {hasSummer && <TideWaves />}
       <div className="absolute inset-0 -z-10">
-        <div className="absolute -left-1/4 top-0 h-[600px] w-[600px] rounded-full bg-brand-orange/20 blur-[120px] animate-aurora" />
-        <div className="absolute right-0 top-1/4 h-[500px] w-[500px] rounded-full bg-brand-navy/20 blur-[120px] animate-aurora [animation-delay:4s]" />
-        <div className="absolute bottom-0 left-1/3 h-[400px] w-[400px] rounded-full bg-brand-gold/15 blur-[100px] animate-aurora [animation-delay:8s]" />
-        {hasWinter && <div className="absolute -right-1/4 top-1/3 h-[520px] w-[520px] rounded-full bg-sky-400/20 blur-[120px] animate-aurora [animation-delay:2s]" />}
+        {/* phones: one static gradient instead of 4 huge animated blurs (very slow in Safari) */}
+        <div className="absolute inset-0 md:hidden bg-[radial-gradient(60%_40%_at_20%_10%,hsl(16_88%_52%/0.18),transparent),radial-gradient(50%_35%_at_90%_35%,hsl(228_32%_16%/0.14),transparent),radial-gradient(50%_30%_at_40%_95%,hsl(38_95%_58%/0.14),transparent)]" />
+        <div className="absolute -left-1/4 top-0 h-[600px] w-[600px] hidden rounded-full bg-brand-orange/20 blur-[120px] animate-aurora md:block" />
+        <div className="absolute right-0 top-1/4 h-[500px] w-[500px] hidden rounded-full bg-brand-navy/20 blur-[120px] animate-aurora [animation-delay:4s] md:block" />
+        <div className="absolute bottom-0 left-1/3 h-[400px] w-[400px] hidden rounded-full bg-brand-gold/15 blur-[100px] animate-aurora [animation-delay:8s] md:block" />
+        {hasWinter && <div className="absolute -right-1/4 top-1/3 hidden h-[520px] w-[520px] rounded-full bg-sky-400/20 blur-[120px] animate-aurora [animation-delay:2s] md:block" />}
         <div className="absolute inset-0 bg-grid opacity-20 mask-fade-b" />
       </div>
 
@@ -38,7 +40,7 @@ export function HomeHero({ seasons = [] }: { seasons?: Season[] }) {
           {open.length > 0 ? (
             <SeasonOpenBanner seasons={open} />
           ) : (
-            <div className="inline-flex items-center gap-2 rounded-full border border-primary/30 bg-primary/10 px-4 py-1.5 text-sm font-medium text-primary backdrop-blur-sm animate-fade-in">
+            <div className="inline-flex items-center gap-2 rounded-full border border-primary/30 bg-primary/10 px-4 py-1.5 text-sm font-medium text-primary md:backdrop-blur-sm animate-fade-in">
               The Camp — by the YWCA
             </div>
           )}
@@ -57,7 +59,7 @@ export function HomeHero({ seasons = [] }: { seasons?: Season[] }) {
             <Button asChild size="lg" className="group h-12 rounded-full px-7 text-base glow-orange">
               <Link href="/camps"><span>Register Now</span><ArrowRight className="ml-2 h-4 w-4 transition-transform group-hover:translate-x-0.5" /></Link>
             </Button>
-            <Button asChild size="lg" variant="outline" className="h-12 rounded-full border-border/60 bg-card/40 px-7 text-base backdrop-blur-sm hover:bg-card">
+            <Button asChild size="lg" variant="outline" className="h-12 rounded-full border-border/60 bg-card/40 px-7 text-base md:backdrop-blur-sm hover:bg-card">
               <Link href="/calendar"><span>View Calendar</span><Sparkles className="ml-2 h-4 w-4" /></Link>
             </Button>
           </div>

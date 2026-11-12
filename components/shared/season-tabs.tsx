@@ -11,7 +11,7 @@ export function SeasonTabs({ seasons, defaultSeason = 'summer' }: { seasons: Sea
   return (
     <Tabs defaultValue={seasons.some((s) => s.type === defaultSeason) ? defaultSeason : seasons[0]?.type}>
       <div className="flex justify-center">
-        <TabsList className="h-auto rounded-full border border-border/60 bg-card/50 p-1.5 backdrop-blur-sm">
+        <TabsList className="h-auto rounded-full border border-border/60 bg-card/50 p-1.5 md:backdrop-blur-sm">
           {seasons.map((s) => {
             const Icon = getSeasonIcon(s.iconName);
             return (
