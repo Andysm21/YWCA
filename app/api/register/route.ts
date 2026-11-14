@@ -5,6 +5,7 @@ import { recordEmailResult } from '@/lib/registration-email';
 import { getMeetingPoints } from '@/lib/queries/site-settings';
 import { isRateLimited } from '@/lib/rate-limit';
 import { newColumnsReady } from '@/lib/schema-features';
+import { openDueCamps } from '@/lib/camp-scheduling';
 import { validateRegistrationInput, gradeOptionsForCamp, tshirtSizesForCamp } from '@/lib/validation/registration';
 
 export async function POST(request: Request) {
@@ -40,6 +41,8 @@ export async function POST(request: Request) {
     date_start: string; date_end: string; dob_min?: string | null; dob_max?: string | null;
     camp_types: { name: string } | { name: string }[] | null;
   };
+  // A camp scheduled to open right now must accept this registration.
+  await openDueCamps();
   const campSelect: string = newColumns
     ? 'id, slug, capacity, status, price_egp, date_start, date_end, dob_min, dob_max, camp_types(name)'
     : 'id, slug, capacity, status, price_egp, date_start, date_end, camp_types(name)';

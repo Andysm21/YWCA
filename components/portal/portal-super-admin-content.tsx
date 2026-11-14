@@ -28,6 +28,9 @@ import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { ContentTab } from '@/components/portal/content-management';
 import { ConfirmDialog, type ConfirmState } from '@/components/portal/confirm-dialog';
+import { describeCampState } from '@/lib/camp-state';
+import { cairoLocalToUtcIso, utcIsoToCairoLocal, formatCairo } from '@/lib/time-cairo';
+import type { RegistrationState } from '@/lib/validation/camp';
 import { DEFAULT_INSTAGRAM_URL, type PublicSiteSettings } from '@/lib/site-settings-shared';
 import { EmailStatusCell } from '@/components/portal/email-status-cell';
 import { RegistrationActionsCell } from '@/components/portal/registration-actions-cell';
@@ -344,10 +347,86 @@ function SeasonsTab({ seasons, onConfirm }: { seasons: Season[]; onConfirm: (s: 
   );
 }
 
+
+function CampStateCell({
+  camp, regCount, onConfirm,
+}: {
+  camp: Camp;
+  regCount: number;
+  onConfirm: (s: { title: string; description: string; onConfirm: () => void }) => void;
+}) {
+  const router = useRouter();
+  const [busy, setBusy] = React.useState(false);
+  const info = describeCampState(camp);
+
+  async function setState(state: RegistrationState) {
+    setBusy(true);
+    try {
+      const res = await fetch(`/api/portal/camps/${camp.id}/status`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ state }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Could not change the camp state');
+      router.refresh();
+    } catch (err) {
+      onConfirm({ title: 'Could not update the camp', description: err instanceof Error ? err.message : 'Unknown error', onConfirm: () => {} });
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  const tone = {
+    open: 'border-emerald-500/30 bg-emerald-500/15 text-emerald-500',
+    soon: 'border-sky-500/30 bg-sky-500/15 text-sky-500',
+    scheduled: 'border-amber-500/30 bg-amber-500/15 text-amber-500',
+    hidden: 'border-zinc-500/30 bg-zinc-500/15 text-zinc-400',
+  }[info.tone];
+
+  return (
+    <div className="min-w-[10rem]">
+      <span className={cn('inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-semibold', tone)}>{info.label}</span>
+      <p className="mt-1 text-xs text-muted-foreground">{info.detail}</p>
+      <div className="mt-1.5 flex flex-wrap gap-1.5">
+        {camp.dbStatus !== 'open' && (
+          <Button
+            size="sm"
+            variant="outline"
+            className="h-7 rounded-full border-border/60 bg-transparent px-2.5 text-xs"
+            disabled={busy}
+            onClick={() => onConfirm({ title: `Open ${camp.name} now?`, description: 'The camp becomes visible on the website and registration opens immediately.', onConfirm: () => setState('open') })}
+          >
+            {busy ? <Loader2 className="mr-1 h-3 w-3 animate-spin" /> : null} Open now
+          </Button>
+        )}
+        {camp.dbStatus === 'open' && (
+          <Button
+            size="sm"
+            variant="ghost"
+            className="h-7 rounded-full px-2.5 text-xs text-muted-foreground"
+            disabled={busy}
+            onClick={() => onConfirm({
+              title: `Hide ${camp.name}?`,
+              description: regCount > 0
+                ? `It disappears from the website and registration closes. It already has ${regCount} registration${regCount === 1 ? '' : 's'}: people who registered will not be able to open this camp's page or payment page while it is hidden.`
+                : 'It disappears from the website and registration closes.',
+              onConfirm: () => setState('hidden'),
+            })}
+          >
+            Hide
+          </Button>
+        )}
+      </div>
+    </div>
+  );
+}
+
 /* ========== CAMPS ========== */
 const emptyCampForm = {
   season_id: '', camp_type_id: '', slug: '', age_min: '7', age_max: '11', price_egp: '',
   capacity: '48', date_start: '', date_end: '', description: '', cover_photo_url: '', dob_min: '', dob_max: '',
+  registration_state: 'hidden' as RegistrationState, opens_at_local: '',
 };
 type CampFormState = typeof emptyCampForm;
 
@@ -517,6 +596,32 @@ function CampForm({
         <p className="text-xs text-muted-foreground sm:col-span-2 lg:col-span-3">
           Optional. On the registration form, birth dates before the earliest or after the latest date are disabled. Suggest from ages fills both from the Min and Max age (counted at the camp start date, or today if no start date is set). Leave empty for no limit.
         </p>
+        <div className="space-y-3 rounded-2xl border border-border/60 bg-background/30 p-4 sm:col-span-2 lg:col-span-3">
+          <div>
+            <Label className="text-base">Visibility &amp; registration</Label>
+            <p className="mt-1 text-xs text-muted-foreground">Hidden camps are not shown anywhere on the website and nobody can register. Open them yourself, or pick a date and time and the camp opens automatically.</p>
+          </div>
+          <div className="grid gap-2 sm:grid-cols-2">
+            {([
+              { v: 'hidden', t: 'Hidden — registration closed', d: 'Not visible. Open it manually later.' },
+              { v: 'scheduled', t: 'Schedule opening', d: 'Hidden until the date & time you choose.' },
+              { v: 'coming_soon', t: 'Visible — coming soon', d: 'Shown to guests as "Coming soon".' },
+              { v: 'open', t: 'Open now', d: 'Visible and accepting registrations.' },
+            ] as { v: RegistrationState; t: string; d: string }[]).map((o) => (
+              <label key={o.v} className={cn('flex cursor-pointer items-start gap-3 rounded-xl border p-3 transition-colors', form.registration_state === o.v ? 'border-primary bg-primary/10' : 'border-border/60 hover:bg-muted/40')}>
+                <input type="radio" name="registration_state" value={o.v} checked={form.registration_state === o.v} onChange={() => set('registration_state', o.v)} className="mt-1 accent-[hsl(var(--primary))]" />
+                <span><span className="block text-sm font-semibold text-foreground">{o.t}</span><span className="block text-xs text-muted-foreground">{o.d}</span></span>
+              </label>
+            ))}
+          </div>
+          {form.registration_state === 'scheduled' && (
+            <div className="max-w-sm space-y-2">
+              <Label>Opens at (Egypt time)</Label>
+              <Input type="datetime-local" value={form.opens_at_local} onChange={(e) => set('opens_at_local', e.target.value)} className="rounded-xl bg-background/50" />
+              <p className="text-xs text-muted-foreground">Cairo local time{form.opens_at_local ? ` · ${formatCairo(cairoLocalToUtcIso(form.opens_at_local))}` : ''}. The camp becomes visible and open within about a minute of this time.</p>
+            </div>
+          )}
+        </div>
         <div className="space-y-2 sm:col-span-2 lg:col-span-3">
           <Label>Description</Label>
           <Input placeholder="A brief description of the camp..." value={form.description} onChange={(e) => set('description', e.target.value)} className="rounded-xl bg-background/50" />
@@ -621,6 +726,8 @@ function CampsTab({
             cover_photo_url: editingCamp.coverPhotoUrl ?? '',
             dob_min: editingCamp.dobMin ?? '',
             dob_max: editingCamp.dobMax ?? '',
+            registration_state: editingCamp.dbStatus === 'open' ? 'open' : editingCamp.dbStatus === 'coming_soon' ? 'coming_soon' : editingCamp.opensAt ? 'scheduled' : 'hidden',
+            opens_at_local: utcIsoToCairoLocal(editingCamp.opensAt),
           }}
           campBreakdownById={campBreakdownById}
           onCancel={() => setEditingCamp(null)}
@@ -632,7 +739,7 @@ function CampsTab({
         <table className="w-full text-sm">
           <thead>
             <tr className="border-b border-border/60">
-              {['Camp', 'Season', 'Dates', 'Age', 'Spots', 'Price', 'Actions'].map((h) => (
+              {['Camp', 'Season', 'Registration', 'Dates', 'Age', 'Spots', 'Price', 'Actions'].map((h) => (
                 <th key={h} className="px-4 py-3 text-left font-semibold text-muted-foreground">{h}</th>
               ))}
             </tr>
@@ -644,6 +751,9 @@ function CampsTab({
                 <tr key={c.id} className="border-b border-border/40 transition-colors hover:bg-muted/30">
                   <td className="px-4 py-3 font-medium text-foreground"><Link href={`/portal/admin/camps/${c.id}`} className="hover:text-primary hover:underline">{c.name}</Link>{regCount > 0 && <span className="ml-2 rounded-full bg-primary/10 px-2 py-0.5 text-xs font-semibold text-primary">{regCount}</span>}</td>
                   <td className="px-4 py-3 capitalize text-muted-foreground">{c.season} {c.year}</td>
+                  <td className="px-4 py-3">
+                    <CampStateCell camp={c} regCount={regCount} onConfirm={onConfirm} />
+                  </td>
                   <td className="px-4 py-3 text-muted-foreground">{formatDateRange(c.dateStart, c.dateEnd)}</td>
                   <td className="px-4 py-3 text-muted-foreground">{c.ageRange}</td>
                   <td className="px-4 py-3 text-muted-foreground">{c.spotsLeft}/{c.capacity}</td>

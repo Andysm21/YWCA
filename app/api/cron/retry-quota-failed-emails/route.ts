@@ -4,6 +4,7 @@ import { requireStaff } from '@/lib/auth/require-staff';
 import { sendPendingPaymentEmail, sendWaitlistEmail } from '@/lib/email';
 import { recordEmailResult } from '@/lib/registration-email';
 import { getMeetingPoints } from '@/lib/queries/site-settings';
+import { openDueCamps } from '@/lib/camp-scheduling';
 
 const MAX_ATTEMPTS_PER_RUN = 25;
 
@@ -46,6 +47,7 @@ async function handleRetry(request: Request) {
     return NextResponse.json({ error: 'Not authorized' }, { status: 401 });
   }
 
+  await openDueCamps(true);
   const supabase = createServiceClient();
 
   const { data: failedLogs, error: fetchError } = await supabase

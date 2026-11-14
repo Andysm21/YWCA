@@ -28,3 +28,22 @@ export async function newColumnsReady(): Promise<boolean> {
   }
   return cached.ready;
 }
+
+/**
+ * camps.opens_at + open_due_camps() come from migration
+ * 20260815000001 (scheduled camp opening), also applied by hand in the SQL
+ * editor. Same approach as above: off until the column exists.
+ */
+let scheduleCached: { ready: boolean; checkedAt: number } | null = null;
+
+export async function scheduleReady(): Promise<boolean> {
+  if (scheduleCached && (scheduleCached.ready || Date.now() - scheduleCached.checkedAt < 30_000)) return scheduleCached.ready;
+  try {
+    const supabase = createServiceClient();
+    const { error } = await supabase.from('camps').select('opens_at').limit(1);
+    scheduleCached = { ready: !error, checkedAt: Date.now() };
+  } catch {
+    scheduleCached = { ready: false, checkedAt: Date.now() };
+  }
+  return scheduleCached.ready;
+}

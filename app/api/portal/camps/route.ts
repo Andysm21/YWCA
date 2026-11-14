@@ -2,7 +2,9 @@ import { NextResponse } from 'next/server';
 import { requireSuperAdmin } from '@/lib/auth/require-staff';
 import { writeAuditLog } from '@/lib/audit';
 import { newColumnsReady } from '@/lib/schema-features';
-import { validateCampInput, type CampInput } from '@/lib/validation/camp';
+import { revalidatePath } from 'next/cache';
+import { scheduleReady } from '@/lib/schema-features';
+import { resolveRegistrationState, validateCampInput, type CampInput } from '@/lib/validation/camp';
 
 export async function POST(request: Request) {
   const auth = await requireSuperAdmin();
@@ -48,9 +50,17 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Birth-date limits need a one-time database update first (run supabase/migrations/20260806000001_dob_range_and_bus_pickup.sql in the Supabase SQL editor).' }, { status: 503 });
     }
 
+    // New camps start hidden + closed unless the form says otherwise.
+    const state = resolveRegistrationState({ registration_state: body.registration_state ?? 'hidden', opens_at_local: body.opens_at_local });
+    if (!state.ok) return NextResponse.json({ error: state.error }, { status: 400 });
+    if (state.opens_at && !(await scheduleReady())) {
+      return NextResponse.json({ error: 'Scheduling needs a one-time database update first (run supabase/migrations/20260815000001_camp_scheduled_opening.sql in the Supabase SQL editor).' }, { status: 503 });
+    }
+
     const { data: camp, error } = await supabase
       .from('camps')
       .insert({
+        ...(state.opens_at ? { opens_at: state.opens_at } : {}),
         ...(dobMin || dobMax ? { dob_min: dobMin, dob_max: dobMax } : {}),
         season_id: body.season_id,
         camp_type_id: body.camp_type_id,
@@ -63,7 +73,7 @@ export async function POST(request: Request) {
         date_end: body.date_end,
         description: body.description.trim(),
         cover_photo_url: body.cover_photo_url?.trim() || null,
-        status: 'coming_soon',
+        status: state.status,
         created_by: userId,
       })
       .select('id, slug')
@@ -86,7 +96,8 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: error.message }, { status: 500 });
     }
 
-    await writeAuditLog(supabase, userId, 'create_camp', 'camp', camp.id, { name: campType.name, slug: camp.slug });
+    await writeAuditLog(supabase, userId, 'create_camp', 'camp', camp.id, { name: campType.name, slug: camp.slug, status: state.status, opens_at: state.opens_at });
+    revalidatePath('/', 'layout');
 
     return NextResponse.json({ camp });
   } catch (err) {

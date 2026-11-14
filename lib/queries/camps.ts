@@ -2,7 +2,8 @@ import 'server-only';
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { createClient as createServerClient } from '@/utils/supabase/server';
 import { createAnonClient } from '@/utils/supabase/anon';
-import { newColumnsReady } from '@/lib/schema-features';
+import { newColumnsReady, scheduleReady } from '@/lib/schema-features';
+import { openDueCamps } from '@/lib/camp-scheduling';
 import { cookies } from 'next/headers';
 import {
   deriveCampVisuals,
@@ -18,7 +19,10 @@ import {
 // camp_type_id -> camp_types.name join (see migration 20260731000001).
 const BASE_CAMP_COLUMNS = 'id, slug, age_min, age_max, price_egp, capacity, date_start, date_end, description, cover_photo_url, status, season_id, camp_type_id, camp_types(name)';
 async function campColumns(): Promise<string> {
-  return (await newColumnsReady()) ? BASE_CAMP_COLUMNS.replace('camp_type_id,', 'camp_type_id, dob_min, dob_max,') : BASE_CAMP_COLUMNS;
+  let cols = BASE_CAMP_COLUMNS;
+  if (await newColumnsReady()) cols = cols.replace('camp_type_id,', 'camp_type_id, dob_min, dob_max,');
+  if (await scheduleReady()) cols = cols.replace('camp_type_id,', 'camp_type_id, opens_at,');
+  return cols;
 }
 const SEASON_COLUMNS = 'id, type, year, status';
 
@@ -38,6 +42,7 @@ type CampRow = {
   camp_type_id: string;
   dob_min?: string | null;
   dob_max?: string | null;
+  opens_at?: string | null;
   camp_types: { name: string } | { name: string }[] | null;
 };
 
@@ -103,6 +108,7 @@ function toCamp(row: CampRow, season: SeasonRow, spotsLeft: number): Camp {
     ageRange: `${row.age_min}–${row.age_max}`,
     dobMin: row.dob_min ?? null,
     dobMax: row.dob_max ?? null,
+    opensAt: row.opens_at ?? null,
     capacity: row.capacity,
     spotsLeft,
     displayStatus: getDisplayStatus({ dbStatus: row.status, spotsLeft, capacity: row.capacity }),
@@ -127,7 +133,7 @@ function toCamp(row: CampRow, season: SeasonRow, spotsLeft: number): Camp {
  * information leak.
  */
 function redactCapacityForGuest(camp: Camp): Camp {
-  return { ...camp, capacity: -1, spotsLeft: -1 };
+  return { ...camp, capacity: -1, spotsLeft: -1, opensAt: null };
 }
 
 /**
@@ -137,6 +143,7 @@ function redactCapacityForGuest(camp: Camp): Camp {
  * RLS for correctness in this query.
  */
 export async function getOpenSeasonsWithCamps(): Promise<Season[]> {
+  await openDueCamps();
   const supabase = await getAnonClient();
 
   const { data: seasonRows, error: seasonError } = await supabase
@@ -186,6 +193,7 @@ export async function getOpenCamps(): Promise<Camp[]> {
 
 /** Single camp by slug, for the detail/register pages. Closed camps return null (→ notFound()). */
 export async function getCampBySlug(slug: string): Promise<Camp | null> {
+  await openDueCamps();
   const supabase = await getAnonClient();
 
   const { data: campRowRaw, error: campError } = await supabase
@@ -219,6 +227,7 @@ export async function getCampBySlug(slug: string): Promise<Camp | null> {
  * state until Supabase Auth is wired into /portal/login (next step).
  */
 export async function getAllSeasonsWithCampsForPortal(): Promise<Season[]> {
+  await openDueCamps();
   const cookieStore = await cookies();
   const supabase = createServerClient(cookieStore);
 

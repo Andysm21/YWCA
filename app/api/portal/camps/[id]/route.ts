@@ -2,7 +2,9 @@ import { NextResponse } from 'next/server';
 import { requireSuperAdmin } from '@/lib/auth/require-staff';
 import { writeAuditLog } from '@/lib/audit';
 import { newColumnsReady } from '@/lib/schema-features';
-import { validateCampInput, type CampInput } from '@/lib/validation/camp';
+import { revalidatePath } from 'next/cache';
+import { scheduleReady } from '@/lib/schema-features';
+import { resolveRegistrationState, validateCampInput, type CampInput } from '@/lib/validation/camp';
 
 /**
  * camp_type is intentionally locked after creation — it's tied to
@@ -53,7 +55,15 @@ export async function PATCH(request: Request, { params }: { params: { id: string
     } else if (dobMin || dobMax) {
       return NextResponse.json({ error: 'Birth-date limits need a one-time database update first (run supabase/migrations/20260806000001_dob_range_and_bus_pickup.sql in the Supabase SQL editor).' }, { status: 503 });
     }
-    if (body.status) update.status = body.status;
+    if (body.registration_state) {
+      const state = resolveRegistrationState(body);
+      if (!state.ok) return NextResponse.json({ error: state.error }, { status: 400 });
+      if (state.opens_at && !(await scheduleReady())) {
+        return NextResponse.json({ error: 'Scheduling needs a one-time database update first (run supabase/migrations/20260815000001_camp_scheduled_opening.sql in the Supabase SQL editor).' }, { status: 503 });
+      }
+      update.status = state.status;
+      if (await scheduleReady()) update.opens_at = state.opens_at;
+    } else if (body.status) update.status = body.status;
 
     const { data: camp, error } = await supabase
       .from('camps')
@@ -71,6 +81,7 @@ export async function PATCH(request: Request, { params }: { params: { id: string
 
     await writeAuditLog(supabase, userId, 'edit_camp', 'camp', camp.id, { before, after: update });
 
+    revalidatePath('/', 'layout');
     return NextResponse.json({ camp });
   } catch (err) {
     const message = err instanceof Error ? err.message : 'Unexpected server error';

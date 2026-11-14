@@ -11,6 +11,7 @@ import { EmailStatusCell } from '@/components/portal/email-status-cell';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { formatDateRange, type Camp } from '@/lib/camp-data';
+import { describeCampState } from '@/lib/camp-state';
 import type { CampAnalytics } from '@/lib/queries/analytics';
 import type { CampInsights, RegistrationRow } from '@/lib/queries/registrations';
 import { cn } from '@/lib/utils';
@@ -89,11 +90,12 @@ export function CampDetailContent({
           <div className="flex flex-wrap items-center gap-2">
             <h1 className="font-display text-2xl font-extrabold text-foreground sm:text-3xl">{camp.name}</h1>
             <span className="rounded-full border border-border/60 bg-card/50 px-2.5 py-0.5 text-xs font-semibold capitalize text-muted-foreground">{camp.season} {camp.year}</span>
-            <span className="rounded-full border border-primary/30 bg-primary/10 px-2.5 py-0.5 text-xs font-semibold capitalize text-primary">{camp.dbStatus.replace('_', ' ')}</span>
+            <span className="rounded-full border border-primary/30 bg-primary/10 px-2.5 py-0.5 text-xs font-semibold text-primary">{describeCampState(camp).label}</span>
           </div>
           <p className="mt-1 text-sm text-muted-foreground">
             {formatDateRange(camp.dateStart, camp.dateEnd)} · Ages {camp.ageRange} · EGP {camp.price.toLocaleString()} · Capacity {camp.capacity}
           </p>
+          <p className="mt-0.5 text-xs text-muted-foreground">{describeCampState(camp).detail}</p>
         </div>
         <div className="flex flex-wrap gap-2">
           <Button asChild className="rounded-full glow-orange">

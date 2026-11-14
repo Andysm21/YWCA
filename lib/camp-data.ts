@@ -46,6 +46,8 @@ export type Camp = {
   /** Allowed birth-date range for registration (YYYY-MM-DD); null = no limit. */
   dobMin: string | null;
   dobMax: string | null;
+  /** Scheduled opening moment (UTC ISO) for a hidden camp; null when none. Portal-only. */
+  opensAt: string | null;
   /**
    * capacity/spotsLeft carry the real numbers everywhere internally, but
    * guest-facing query exports (lib/queries/camps.ts: getOpenCamps,

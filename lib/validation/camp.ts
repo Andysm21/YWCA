@@ -1,3 +1,8 @@
+import { cairoLocalToUtcIso } from '@/lib/time-cairo';
+
+/** Where a camp stands for guests: hidden + closed, hidden until a set time, visible but not open, or open for registration. */
+export type RegistrationState = 'hidden' | 'scheduled' | 'coming_soon' | 'open';
+
 export type CampInput = {
   season_id: string;
   /** Required on create; ignored on edit (camp_type is locked after creation — see app/api/portal/camps/[id]/route.ts). */
@@ -14,7 +19,28 @@ export type CampInput = {
   /** Optional allowed birth-date range for registration, YYYY-MM-DD. */
   dob_min?: string | null;
   dob_max?: string | null;
+  /** Visibility / registration state. Omitted on edit = leave unchanged. New camps default to 'hidden'. */
+  registration_state?: RegistrationState;
+  /** Opening moment as Egypt wall-clock time, "YYYY-MM-DDTHH:mm" (required when state is 'scheduled'). */
+  opens_at_local?: string;
 };
+
+/** Translates the form's state into the DB columns. `error` is set when the input is invalid. */
+export function resolveRegistrationState(input: Pick<CampInput, 'registration_state' | 'opens_at_local'>, now = new Date()):
+  | { ok: true; status: 'closed' | 'coming_soon' | 'open'; opens_at: string | null }
+  | { ok: false; error: string } {
+  switch (input.registration_state) {
+    case 'open': return { ok: true, status: 'open', opens_at: null };
+    case 'coming_soon': return { ok: true, status: 'coming_soon', opens_at: null };
+    case 'scheduled': {
+      const iso = input.opens_at_local ? cairoLocalToUtcIso(input.opens_at_local) : null;
+      if (!iso) return { ok: false, error: 'Choose the opening date and time (Egypt time).' };
+      if (new Date(iso).getTime() <= now.getTime() + 30_000) return { ok: false, error: 'The opening time must be in the future (Egypt time).' };
+      return { ok: true, status: 'closed', opens_at: iso };
+    }
+    default: return { ok: true, status: 'closed', opens_at: null };
+  }
+}
 
 const SLUG_PATTERN = /^[a-z0-9]+(-[a-z0-9]+)*$/;
 
@@ -86,6 +112,11 @@ export function validateCampInput(input: CampInput): string[] {
   if (dobMin && dobMax && dobMin > dobMax) errors.push('Earliest birth date cannot be after the latest birth date.');
 
   if (!input.description.trim()) errors.push('Description is required.');
+
+  if (input.registration_state === 'scheduled') {
+    const r = resolveRegistrationState(input);
+    if (!r.ok) errors.push(r.error);
+  }
 
   return errors;
 }
