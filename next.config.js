@@ -9,6 +9,13 @@ const nextConfig = {
     minimumCacheTTL: 2592000,
     remotePatterns: [{ protocol: 'https', hostname: '*.supabase.co', pathname: '/storage/v1/object/public/**' }],
   },
+  async redirects() {
+    // Teen Camp was renamed Teens Camp — keep old links (emails, shares) working.
+    return [
+      { source: '/camps/teen-camp-2026', destination: '/camps/teens-camp-2026', permanent: true },
+      { source: '/register/teen-camp-2026', destination: '/register/teens-camp-2026', permanent: true },
+    ];
+  },
   async headers() {
     const longCache = [{ key: 'Cache-Control', value: 'public, max-age=2592000, stale-while-revalidate=86400' }];
     const security = [

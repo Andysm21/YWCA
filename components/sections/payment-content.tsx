@@ -2,6 +2,7 @@
 
 import * as React from 'react';
 import Link from 'next/link';
+import { PaymentReceivedCelebration } from '@/components/shared/status-celebration';
 import { Copy, Check, Loader2, Upload, PartyPopper, AlertCircle, Search } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -96,17 +97,18 @@ export function PaymentContent({ camp, bankDetails, initialCode }: Props) {
   if (result) {
     return (
       <div className="mx-auto max-w-2xl px-6 py-16 lg:px-8">
-        <div className="rounded-2xl border border-border/60 bg-card/50 p-8 text-center">
-          <div className={cn('mx-auto mb-6 flex h-20 w-20 items-center justify-center rounded-full',
-            result.waitlisted ? 'bg-amber-500/15 text-amber-400' : 'bg-emerald-500/15 text-emerald-400')}>
-            <PartyPopper className="h-10 w-10" />
-          </div>
-          <h2 className="font-display text-2xl font-bold text-foreground">
-            {result.waitlisted ? "Moved to the waitlist" : "Payment submitted!"}
-          </h2>
-          <p className="mt-2 text-muted-foreground">
-            {result.message ?? "We've received your documents. An admin will confirm your registration soon."}
-          </p>
+        <div className="rounded-2xl border border-border/60 bg-card/50 p-6 text-center sm:p-10">
+          {result.waitlisted ? (
+            <>
+              <div className="mx-auto mb-6 flex h-20 w-20 items-center justify-center rounded-full bg-amber-500/15 text-amber-400">
+                <PartyPopper className="h-10 w-10" />
+              </div>
+              <h2 className="font-display text-2xl font-bold text-foreground">Moved to the waitlist</h2>
+              <p className="mt-2 text-muted-foreground">{result.message}</p>
+            </>
+          ) : (
+            <PaymentReceivedCelebration />
+          )}
           <Button asChild className="mt-8 rounded-full glow-orange">
             <Link href="/">Back to home</Link>
           </Button>

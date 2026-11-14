@@ -8,6 +8,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Checkbox } from '@/components/ui/checkbox';
 import { StepProgress } from '@/components/shared/step-progress';
+import { RegisteredCelebration } from '@/components/shared/status-celebration';
 import { formatDateRange, formatPrice, type Camp } from '@/lib/camp-data';
 import { cn } from '@/lib/utils';
 import { gradeOptionsForCamp, tshirtGroupsForCamp, KIDS_TSHIRT_SIZES, ADULT_TSHIRT_SIZES, kidsSizeValue, BUS_PICKUP_OPTIONS } from '@/lib/validation/registration';
@@ -321,24 +322,18 @@ export function RegisterContent({ camp }: { camp: Camp }) {
 
         {step === 5 && result && (
           <div className="animate-fade-up text-center">
-            <div className="mx-auto mb-6 flex h-20 w-20 items-center justify-center rounded-full bg-emerald-500/15 text-emerald-400">
-              <PartyPopper className="h-10 w-10" />
-            </div>
-            <h2 className="font-display text-2xl font-bold text-foreground">{result.status === 'waitlisted' ? "You're on the waitlist!" : 'Almost there — payment needed'}</h2>
-            <p className="mt-2 text-muted-foreground">
-              {result.status === 'waitlisted'
-                ? `We've added ${step1.camperName} to the waitlist for ${camp.name} (position ${result.waitlist_position}). We'll contact you at ${step2.parentEmail} if a spot opens up.`
-                : `We've received ${step1.camperName}'s form for ${camp.name} (registration number ${result.registration_number}). The spot is NOT secured yet: check ${step2.parentEmail} for an email with your payment link, pay the full amount and upload your payment screenshot. Until then the registration stays pending.`}
-            </p>
-            {result.status !== 'waitlisted' && (
-              <p className="mx-auto mt-6 max-w-md rounded-xl border border-amber-500/40 bg-amber-500/10 p-3 text-sm font-semibold text-foreground">
-                ⏳ Status: Pending payment — your spot is not secured until you pay and upload proof of payment.
-              </p>
-            )}
-            {result.status !== 'waitlisted' && (
-              <p className="mx-auto mt-3 max-w-md rounded-xl border border-sky-500/40 bg-sky-500/10 p-3 text-sm text-foreground">
-                📧 You should receive the payment email <strong>right away</strong> at {step2.parentEmail}. If you don&apos;t see it within a few minutes, please check your <strong>Spam / Junk</strong> folder and mark it as &quot;Not spam&quot;.
-              </p>
+            {result.status === 'waitlisted' ? (
+              <>
+                <div className="mx-auto mb-6 flex h-20 w-20 items-center justify-center rounded-full bg-amber-500/15 text-amber-400">
+                  <PartyPopper className="h-10 w-10" />
+                </div>
+                <h2 className="font-display text-2xl font-bold text-foreground">You&apos;re on the waitlist!</h2>
+                <p className="mt-2 text-muted-foreground">
+                  {`We've added ${step1.camperName} to the waitlist for ${camp.name} (position ${result.waitlist_position}). We'll contact you at ${step2.parentEmail} if a spot opens up.`}
+                </p>
+              </>
+            ) : (
+              <RegisteredCelebration camperName={step1.camperName} campName={camp.name} email={step2.parentEmail} />
             )}
             <div className="mx-auto mt-8 max-w-sm space-y-3 rounded-xl border border-border/60 bg-background/40 p-5 text-left text-sm">
               <Row label="Registration #" value={result.registration_number} />

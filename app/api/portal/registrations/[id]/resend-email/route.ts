@@ -2,7 +2,8 @@ import { NextResponse } from 'next/server';
 import { requireStaff } from '@/lib/auth/require-staff';
 import { writeAuditLog } from '@/lib/audit';
 import { recordEmailResult } from '@/lib/registration-email';
-import { sendPendingPaymentEmail, sendWaitlistEmail } from '@/lib/email';
+import { sendPendingPaymentEmail, sendWaitlistEmail, sendSpotConfirmedEmail } from '@/lib/email';
+import { formatDateRange } from '@/lib/camp-data';
 import { getMeetingPoints } from '@/lib/queries/site-settings';
 
 /**
@@ -51,6 +52,16 @@ export async function POST(_request: Request, { params }: { params: { id: string
         registrationNumber: registration.registration_number,
         campName,
         campSlug: camp.slug,
+        priceEgp: camp.price_egp,
+        meetingPoints: await getMeetingPoints(),
+      });
+    } else if (registration.status === 'confirmed') {
+      result = await sendSpotConfirmedEmail({
+        to: registration.parent_email,
+        camperName: registration.camper_name,
+        registrationNumber: registration.registration_number,
+        campName,
+        dateRange: formatDateRange(camp.date_start, camp.date_end),
         priceEgp: camp.price_egp,
         meetingPoints: await getMeetingPoints(),
       });

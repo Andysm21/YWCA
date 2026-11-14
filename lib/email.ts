@@ -512,6 +512,108 @@ ${NO_REPLY_TEXT}`,
   });
 }
 
+type SpotConfirmedEmailParams = {
+  to: string;
+  camperName: string;
+  registrationNumber: string;
+  campName: string;
+  dateRange: string;
+  priceEgp: number;
+  meetingPoints: string[];
+  busPickup?: string | null;
+};
+
+/**
+ * Final email, sent when staff confirm the payment. This is the ONLY email
+ * that may say the camper is registered, paid and has a secured spot.
+ */
+export async function sendSpotConfirmedEmail(params: SpotConfirmedEmailParams): Promise<SendResult> {
+  const priceLabel = params.priceEgp.toLocaleString();
+  const firstName = params.camperName.trim().split(/\s+/)[0] || 'there';
+  const meetingPointsHtml = params.meetingPoints.map((point) => `<li>${escapeHtml(point)}</li>`).join('');
+  const meetingPointsText = params.meetingPoints.map((point) => `- ${point}`).join('\n');
+
+  const contentHtml = `
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background-color:#E7F8EF; border:2px solid #1A9B6C; border-radius:14px;">
+<tr><td style="padding:16px 18px;">
+<p style="margin:0 0 4px; font-size:12px; font-weight:800; letter-spacing:0.1em; color:#0F6B49;">Status: registered &amp; paid ✓</p>
+<p style="margin:0; font-size:15px; line-height:1.55; color:#0B3D2B;"><strong>You are successfully registered and your payment is confirmed.</strong> Your spot at ${escapeHtml(params.campName)} is secured!</p>
+</td></tr>
+</table>
+
+<p style="margin:22px 0 6px; font-size:16px; line-height:1.6; color:#1B1F3A;">Hi <strong>${escapeHtml(params.camperName)}</strong>,</p>
+<p style="margin:0 0 22px; font-size:15px; line-height:1.6; color:#4A4D63;">We have reviewed your documents and payment — everything is in order. We can&rsquo;t wait to see you at camp! 🏕️</p>
+
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0">
+${stepRowHtml(1, 'Registration form', 'We have your details.', 'done')}
+${stepRowHtml(2, `Payment — EGP ${priceLabel}`, 'Received and verified by our team.', 'done')}
+${stepRowHtml(3, 'Spot secured', 'You are officially part of the camp. See you there!', 'done')}
+</table>
+
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background-color:#FFF4E8; border-radius:14px; margin-top:6px;">
+<tr><td style="padding:18px 22px;">
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0">
+${detailRowHtml('Registration No.', escapeHtml(params.registrationNumber), '#B34A17')}
+${detailRowHtml('Camp', escapeHtml(params.campName))}
+${detailRowHtml('Dates', escapeHtml(params.dateRange))}
+${detailRowHtml('Camper', escapeHtml(params.camperName))}
+${params.busPickup ? detailRowHtml('Bus pickup', escapeHtml(params.busPickup)) : ''}
+${detailRowHtml('Paid', `EGP ${priceLabel}`, '#1A6B5C')}
+</table>
+</td></tr>
+</table>
+
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin-top:18px; background-color:#F5F5F2; border-radius:12px;">
+<tr><td style="padding:18px 20px;">
+<p style="margin:0 0 6px; font-size:14px; font-weight:800; color:#1B1F3A;">📍 Where &amp; when to meet</p>
+<p style="margin:0 0 10px; font-size:13px; color:#5A5D70; line-height:1.6;">The camp takes place at <a href="${LOCATION_URL}" style="color:#1A6B5C; font-weight:700;">Paradise Beach, Ras Sudr</a>.</p>
+<ul style="margin:0 0 12px; padding-left:18px; font-size:13px; color:#5A5D70; line-height:1.7;">
+${meetingPointsHtml}
+</ul>
+<p style="margin:0; font-size:12px; color:#7A7D90; line-height:1.6;">We will contact you a few days before camp with the final details.</p>
+</td></tr>
+</table>
+`;
+
+  const html = emailShell({
+    preheader: `You're in! Your spot at ${params.campName} is secured — we can't wait to see you at camp.`,
+    pill: 'Spot secured',
+    pillColor: '#6EE7B7',
+    title: `You&rsquo;re in, ${escapeHtml(firstName)}! 🎉`,
+    subtitle: `Registered, paid and secured for ${escapeHtml(params.campName)}.`,
+    contentHtml,
+  });
+
+  const text = `YOU'RE IN! YOUR SPOT IS SECURED
+
+Hi ${params.camperName},
+
+You are successfully registered and your payment is confirmed. Your spot at ${params.campName} is secured. We have reviewed your documents and payment - everything is in order. We can't wait to see you at camp!
+
+Registration No.: ${params.registrationNumber}
+Camp: ${params.campName}
+Dates: ${params.dateRange}
+Camper: ${params.camperName}${params.busPickup ? `
+Bus pickup: ${params.busPickup}` : ''}
+Paid: EGP ${priceLabel}
+
+Where & when to meet
+Paradise Beach, Ras Sudr (${LOCATION_URL})
+${meetingPointsText}
+We will contact you a few days before camp with the final details.
+${NO_REPLY_TEXT}
+Kind regards,
+YWCA Camp Team`;
+
+  return sendMailSafely({
+    from: `"YWCA Camp" <${process.env.GMAIL_USER}>`,
+    to: params.to,
+    subject: `You're in! Your spot at ${params.campName} is secured (${params.registrationNumber})`,
+    html,
+    text,
+  });
+}
+
 type PasswordResetEmailParams = {
   to: string;
   resetUrl: string;
