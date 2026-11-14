@@ -116,7 +116,7 @@ export function RegisterContent({ camp }: { camp: Camp }) {
               <div className="flex h-8 w-8 items-center justify-center rounded-full bg-primary/12 text-primary"><ScrollText className="h-4 w-4" /></div>
               <h2 className="font-display text-xl font-bold text-foreground">Camp Rules</h2>
             </div>
-            <p className="text-sm text-muted-foreground">Please read the rules carefully. They apply to every camper at every YWCA Camp session.</p>
+            <p className="text-sm text-muted-foreground">Please read the rules carefully. They apply to every camper at every YWCA Camp.</p>
             <div className="rounded-xl border border-border/60 bg-background/40 p-5">
               <ul className="list-disc space-y-2 pl-5 text-sm text-foreground/90">
                 {CAMP_RULES.map((rule) => <li key={rule}>{rule}</li>)}

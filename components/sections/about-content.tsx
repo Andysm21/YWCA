@@ -24,7 +24,7 @@ const campsite = [
   'Closed and secure compound',
   '30 minutes away from the city',
   '13 huts, 1 sitting room, 1 dining room',
-  'Pool, sand playing field, grass playing field',
+  'Pool, sand & grass courts',
 ];
 
 const aDay = [
