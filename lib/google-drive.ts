@@ -124,3 +124,23 @@ export async function getDriveFileStream(fileId: string): Promise<{ stream: Read
     size: meta.data.size ? Number(meta.data.size) : null,
   };
 }
+
+/** Quick connectivity check for the staff diagnostics route: can we authenticate and see the root folder? */
+export async function checkDriveConnection(): Promise<{ ok: true; folderName: string } | { ok: false; reason: string; detail: string }> {
+  const missing = ['GOOGLE_OAUTH_CLIENT_ID', 'GOOGLE_OAUTH_CLIENT_SECRET', 'GOOGLE_OAUTH_REFRESH_TOKEN', 'GOOGLE_DRIVE_ROOT_FOLDER_ID'].filter((k) => !process.env[k]);
+  if (missing.length) return { ok: false, reason: 'missing_env', detail: `Not set on this deployment: ${missing.join(', ')}` };
+  try {
+    const drive = getDriveClient();
+    const { data } = await drive.files.get({ fileId: ROOT_FOLDER_ID!, fields: 'id, name' });
+    return { ok: true, folderName: data.name ?? '(unnamed)' };
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err);
+    const code = (err as any)?.response?.data?.error ?? (err as any)?.code;
+    const reason = /deleted_client/i.test(message) ? 'deleted_client'
+      : /invalid_grant/i.test(message) ? 'invalid_grant (refresh token expired/revoked or from a different client)'
+      : /invalid_client|unauthorized_client/i.test(message) ? 'invalid_client (client ID/secret wrong)'
+      : /404|not found/i.test(message) ? 'root folder not found / not shared with this Google account'
+      : 'other';
+    return { ok: false, reason, detail: `${typeof code === 'string' ? code : ''} ${message}`.trim().slice(0, 300) };
+  }
+}

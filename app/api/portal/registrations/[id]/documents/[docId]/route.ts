@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { Readable } from 'node:stream';
 import { requireStaff } from '@/lib/auth/require-staff';
-import { getDriveFileStream } from '@/lib/google-drive';
+import { getDriveFileStream, checkDriveConnection } from '@/lib/google-drive';
 
 export const dynamic = 'force-dynamic';
 
@@ -50,6 +50,7 @@ export async function GET(request: Request, { params }: { params: { id: string; 
   } catch (err) {
     const message = err instanceof Error ? err.message : 'Could not read the file from Google Drive';
     console.error('[document viewer]', err);
+    const diag = await checkDriveConnection();
     const authIssue = /deleted_client|invalid_grant|invalid_client|unauthorized_client|GOOGLE_OAUTH|GOOGLE_DRIVE/i.test(message);
     return NextResponse.json(
       {
@@ -57,6 +58,7 @@ export async function GET(request: Request, { params }: { params: { id: string; 
           ? 'File storage (Google Drive) is not connected right now. Use "Open in Drive" instead, and ask the site owner to reconnect Google Drive.'
           : 'Could not read the file from Google Drive.',
         driveUrl: doc.drive_file_url,
+        diagnosis: diag.ok ? 'Drive connection is OK, but this specific file could not be read (deleted, moved, or not owned by the connected account).' : `${diag.reason}: ${diag.detail}`,
       },
       { status: 502 }
     );
