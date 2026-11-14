@@ -349,10 +349,12 @@ function SeasonsTab({ seasons, onConfirm }: { seasons: Season[]; onConfirm: (s: 
 
 
 function CampStateCell({
-  camp, regCount, onConfirm,
+  camp, regCount, seasonOpen, onConfirm,
 }: {
   camp: Camp;
   regCount: number;
+  /** The camp's season must be open for guests to see anything in it. */
+  seasonOpen: boolean;
   onConfirm: (s: { title: string; description: string; onConfirm: () => void }) => void;
 }) {
   const router = useRouter();
@@ -388,6 +390,12 @@ function CampStateCell({
     <div className="min-w-[10rem]">
       <span className={cn('inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-semibold', tone)}>{info.label}</span>
       <p className="mt-1 text-xs text-muted-foreground">{info.detail}</p>
+      {!seasonOpen && camp.dbStatus !== 'closed' && (
+        <p className="mt-1 rounded-md bg-amber-500/10 px-2 py-1 text-xs font-semibold text-amber-500">⚠ The season is closed, so guests can&apos;t see this camp. Open the season in the Seasons tab.</p>
+      )}
+      {!seasonOpen && camp.dbStatus === 'closed' && camp.opensAt && (
+        <p className="mt-1 rounded-md bg-amber-500/10 px-2 py-1 text-xs font-semibold text-amber-500">⚠ The season is closed: when this camp opens it still won&apos;t show until the season is open.</p>
+      )}
       <div className="mt-1.5 flex flex-wrap gap-1.5">
         {camp.dbStatus !== 'open' && (
           <Button
@@ -752,7 +760,7 @@ function CampsTab({
                   <td className="px-4 py-3 font-medium text-foreground"><Link href={`/portal/admin/camps/${c.id}`} className="hover:text-primary hover:underline">{c.name}</Link>{regCount > 0 && <span className="ml-2 rounded-full bg-primary/10 px-2 py-0.5 text-xs font-semibold text-primary">{regCount}</span>}</td>
                   <td className="px-4 py-3 capitalize text-muted-foreground">{c.season} {c.year}</td>
                   <td className="px-4 py-3">
-                    <CampStateCell camp={c} regCount={regCount} onConfirm={onConfirm} />
+                    <CampStateCell camp={c} regCount={regCount} seasonOpen={seasons.find((x) => x.id === c.seasonId)?.dbStatus === 'open'} onConfirm={onConfirm} />
                   </td>
                   <td className="px-4 py-3 text-muted-foreground">{formatDateRange(c.dateStart, c.dateEnd)}</td>
                   <td className="px-4 py-3 text-muted-foreground">{c.ageRange}</td>
