@@ -20,7 +20,7 @@ const accentClasses: Record<Camp['accent'], { ring: string; glow: string; iconBg
   teal: {
     ring: 'hover:border-brand-navy/50',
     glow: 'from-brand-navy/25',
-    iconBg: 'bg-brand-navy/15 text-brand-navy',
+    iconBg: 'bg-brand-navy/15 text-brand-navy dark:text-indigo-300',
     bar: 'from-brand-navy to-[hsl(228_25%_38%)]',
   },
   gold: {

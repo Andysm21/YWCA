@@ -9,7 +9,7 @@ import { cn } from '@/lib/utils';
 export function CampDetailContent({ camp }: { camp: Camp }) {
   const a = {
     orange: { bar: 'from-brand-orange to-brand-ember', iconBg: 'bg-brand-orange/15 text-brand-orange', glow: 'from-brand-orange/20' },
-    teal: { bar: 'from-brand-navy to-[hsl(228_25%_38%)]', iconBg: 'bg-brand-navy/15 text-brand-navy', glow: 'from-brand-navy/20' },
+    teal: { bar: 'from-brand-navy to-[hsl(228_25%_38%)]', iconBg: 'bg-brand-navy/15 text-brand-navy dark:text-indigo-300', glow: 'from-brand-navy/20' },
     gold: { bar: 'from-brand-gold to-brand-orange', iconBg: 'bg-brand-gold/15 text-brand-gold', glow: 'from-brand-gold/20' },
   }[camp.accent];
 

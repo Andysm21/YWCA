@@ -16,7 +16,7 @@ export function StatCard({
 }) {
   const accentBg = {
     orange: 'bg-brand-orange/15 text-brand-orange',
-    teal: 'bg-brand-navy/15 text-brand-navy',
+    teal: 'bg-brand-navy/15 text-brand-navy dark:text-indigo-300',
     gold: 'bg-brand-gold/15 text-brand-gold',
   };
   return (
