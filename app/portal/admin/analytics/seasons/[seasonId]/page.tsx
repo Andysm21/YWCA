@@ -67,7 +67,7 @@ export default async function SeasonAnalyticsPage({ params }: { params: { season
               {analytics.camps.map((c) => (
                 <tr key={c.campId} className="border-b border-border/40 last:border-0">
                   <td className="px-5 py-3">
-                    <Link href={`/portal/admin/analytics/camps/${c.campId}`} className="font-medium text-foreground hover:text-primary hover:underline">
+                    <Link href={`/portal/admin/camps/${c.campId}`} className="font-medium text-foreground hover:text-primary hover:underline">
                       {c.campName}
                     </Link>
                   </td>

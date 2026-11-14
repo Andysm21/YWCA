@@ -112,3 +112,15 @@ export async function uploadFileToDrive(
   if (!data.id) throw new Error(`Failed to upload "${fileName}" to Drive`);
   return { driveFileId: data.id, driveFileUrl: data.webViewLink ?? `https://drive.google.com/file/d/${data.id}/view` };
 }
+
+/** Streams a stored file back out of Drive (used by the staff-only document viewer route). */
+export async function getDriveFileStream(fileId: string): Promise<{ stream: Readable; mimeType: string | null; size: number | null }> {
+  const drive = getDriveClient();
+  const meta = await drive.files.get({ fileId, fields: 'mimeType, size' });
+  const res = await drive.files.get({ fileId, alt: 'media' }, { responseType: 'stream' });
+  return {
+    stream: res.data as unknown as Readable,
+    mimeType: meta.data.mimeType ?? null,
+    size: meta.data.size ? Number(meta.data.size) : null,
+  };
+}

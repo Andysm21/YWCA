@@ -44,6 +44,8 @@ function flattenCampTypeName(campsRel: any): { name: string; price_egp: number; 
 export type RegistrationFilters = {
   campId?: string;
   status?: RegistrationStatus;
+  /** Free-text match on camper/guardian name, emails, phone, registration number. */
+  search?: string;
   page?: number;
   pageSize?: number;
 };
@@ -54,7 +56,7 @@ export type RegistrationFilters = {
  * zero rows for anyone else rather than erroring, which is expected until
  * /portal/login has real Supabase Auth wired up.
  */
-export async function getRegistrationsPage({ campId, status, page = 1, pageSize = 25 }: RegistrationFilters) {
+export async function getRegistrationsPage({ campId, status, search, page = 1, pageSize = 25 }: RegistrationFilters) {
   const cookieStore = await cookies();
   const supabase = createServerClient(cookieStore);
 
@@ -70,6 +72,11 @@ export async function getRegistrationsPage({ campId, status, page = 1, pageSize 
 
   if (campId) query = query.eq('camp_id', campId);
   if (status) query = query.eq('status', status);
+  const term = search?.trim().replace(/[%,()*]/g, ' ');
+  if (term) {
+    const like = `%${term}%`;
+    query = query.or(['camper_name', 'parent_name', 'email', 'parent_email', 'mobile_phone', 'parent_mobile', 'registration_number', 'school'].map((c) => `${c}.ilike.${like}`).join(','));
+  }
 
   const from = (page - 1) * pageSize;
   const to = from + pageSize - 1;
@@ -158,4 +165,106 @@ export async function getCampBreakdown() {
     byCamp.set(r.camp_id, existing);
   }
   return Array.from(byCamp.entries()).map(([campId, v]) => ({ campId, ...v }));
+}
+
+export type RegistrationDocument = {
+  id: string;
+  type: 'certificate' | 'payment_screenshot';
+  drive_file_id: string;
+  drive_file_url: string;
+  file_name: string;
+  file_size_bytes: number;
+  uploaded_at: string;
+};
+
+/** Every column of one registration + its camp, season and uploaded documents (for the detail page). */
+export async function getRegistrationDetail(id: string) {
+  const cookieStore = await cookies();
+  const supabase = createServerClient(cookieStore);
+
+  const { data, error } = await supabase
+    .from('registrations')
+    .select('*, camps(id, slug, price_egp, date_start, date_end, capacity, camp_types(name), seasons(type, year))')
+    .eq('id', id)
+    .maybeSingle();
+  if (error) throw error;
+  if (!data) return null;
+
+  const { data: docs, error: docsError } = await supabase
+    .from('registration_documents')
+    .select('id, type, drive_file_id, drive_file_url, file_name, file_size_bytes, uploaded_at')
+    .eq('registration_id', id)
+    .order('uploaded_at', { ascending: true });
+  if (docsError) throw docsError;
+
+  const row = data as any;
+  const campRel = Array.isArray(row.camps) ? row.camps[0] : row.camps;
+  const typeRel = campRel?.camp_types;
+  const seasonRel = campRel?.seasons;
+  const season = Array.isArray(seasonRel) ? seasonRel[0] : seasonRel;
+  return {
+    registration: row as Record<string, any>,
+    camp: campRel
+      ? {
+          id: campRel.id as string,
+          slug: campRel.slug as string,
+          name: ((Array.isArray(typeRel) ? typeRel[0]?.name : typeRel?.name) ?? 'Unknown Camp') as string,
+          price: campRel.price_egp as number,
+          dateStart: campRel.date_start as string,
+          dateEnd: campRel.date_end as string,
+          season: season ? (`${season.type === 'winter' ? 'Winter' : 'Summer'} ${season.year}`) : '',
+        }
+      : null,
+    documents: (docs ?? []) as RegistrationDocument[],
+  };
+}
+
+export type CampInsights = {
+  total: number;
+  byGrade: [string, number][];
+  byTshirt: [string, number][];
+  byBus: [string, number][];
+  firstTimers: number;
+  withMedical: number;
+  missingDocuments: number;
+};
+
+/** Lean per-camp breakdowns (active registrations only: everything except refunded) for the camp page charts. */
+export async function getCampInsights(campId: string): Promise<CampInsights> {
+  const cookieStore = await cookies();
+  const supabase = createServerClient(cookieStore);
+  const withBus = await newColumnsReady();
+  const { data, error } = await supabase
+    .from('registrations')
+    .select(`id, status, academic_year, tshirt_size, first_time_camper, medical_condition${withBus ? ', bus_pickup' : ''}`)
+    .eq('camp_id', campId)
+    .neq('status', 'refunded');
+  if (error) throw error;
+  const rows = (data ?? []) as any[];
+
+  const tally = (pick: (r: any) => string | null | undefined) => {
+    const m = new Map<string, number>();
+    for (const r of rows) {
+      const k = (pick(r) ?? '').toString().trim() || '—';
+      m.set(k, (m.get(k) ?? 0) + 1);
+    }
+    return Array.from(m.entries()).sort((a, b) => b[1] - a[1]);
+  };
+
+  const { data: docRows } = await supabase
+    .from('registration_documents')
+    .select('registration_id')
+    .in('registration_id', rows.length ? rows.map((r) => r.id) : ['00000000-0000-0000-0000-000000000000']);
+  const withDocs = new Set((docRows ?? []).map((d: any) => d.registration_id));
+  const needDocs = rows.filter((r) => r.status === 'payment_submitted' || r.status === 'confirmed');
+
+  return {
+    total: rows.length,
+    byGrade: tally((r) => r.academic_year),
+    byTshirt: tally((r) => r.tshirt_size),
+    byBus: withBus ? tally((r) => r.bus_pickup) : [],
+    firstTimers: rows.filter((r) => r.first_time_camper).length,
+    withMedical: rows.filter((r) => (r.medical_condition ?? '').trim()).length,
+    missingDocuments: needDocs.filter((r) => !withDocs.has(r.id)).length,
+  };
 }

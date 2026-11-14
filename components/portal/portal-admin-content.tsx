@@ -1,6 +1,7 @@
 'use client';
 
 import * as React from 'react';
+import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { Users, CalendarCheck, DollarSign, TrendingUp, Download, ChevronLeft, ChevronRight } from 'lucide-react';
 import { StatCard } from '@/components/shared/stat-card';
@@ -47,8 +48,8 @@ export function PortalAdminContent({ registrations, totalCount, page, pageSize, 
 
   const columns: Column<RegistrationRow>[] = [
     { key: 'registration_number', label: 'Reg #', sortable: true, render: (r) => <span className="font-mono text-xs text-muted-foreground">{r.registration_number}</span> },
-    { key: 'camper_name', label: 'Camper', sortable: true, render: (r) => <span className="font-medium">{r.camper_name}</span> },
-    { key: 'camps', label: 'Camp', render: (r) => r.camps?.name ?? '—' },
+    { key: 'camper_name', label: 'Camper', sortable: true, render: (r) => <Link href={`/portal/admin/registrations/${r.id}`} className="font-medium text-foreground hover:text-primary hover:underline">{r.camper_name}</Link> },
+    { key: 'camps', label: 'Camp', render: (r) => r.camp_id ? <Link href={`/portal/admin/camps/${r.camp_id}`} className="hover:text-primary hover:underline">{r.camps?.name ?? '—'}</Link> : (r.camps?.name ?? '—') },
     { key: 'created_at', label: 'Registered', sortable: true, render: (r) => <span className="text-xs text-muted-foreground">{new Date(r.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}</span> },
     { key: 'status', label: 'Status', sortable: true, render: (r) => (
       <span className={cn('inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-semibold', statusBadge[r.status])}>{r.status.replace('_', ' ')}</span>
@@ -68,18 +69,12 @@ export function PortalAdminContent({ registrations, totalCount, page, pageSize, 
     ) },
   ];
 
-  function exportCSV() {
-    const headers = ['Reg #', 'Camper', 'Camp', 'Status', 'Birth date', 'Grade', 'T-shirt', 'Bus pickup', 'Guardian', 'Email', 'Phone', 'Registered'];
-    const rows = registrations.map((r) => [r.registration_number, r.camper_name, r.camps?.name ?? '', r.status, r.date_of_birth ?? '', r.academic_year ?? '', r.tshirt_size ?? '', r.bus_pickup ?? '', r.parent_name, r.email, r.mobile_phone, r.created_at]);
-    const csv = [headers, ...rows].map((row) => row.map((c) => `"${c}"`).join(',')).join('\n');
-    const blob = new Blob([csv], { type: 'text/csv' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = 'registrations.csv';
-    a.click();
-    URL.revokeObjectURL(url);
-  }
+  const exportHref = (() => {
+    const p = new URLSearchParams();
+    if (campFilter !== 'all') p.set('camp', campFilter);
+    if (statusFilter !== 'all') p.set('status', statusFilter);
+    return `/api/portal/registrations/export${p.toString() ? `?${p}` : ''}`;
+  })();
 
   return (
     <div>
@@ -91,8 +86,8 @@ export function PortalAdminContent({ registrations, totalCount, page, pageSize, 
           </div>
           <p className="mt-1 text-muted-foreground">Confirm payments, mark refunds, and promote from the waitlist. Season/camp management is Super Admin only.</p>
         </div>
-        <Button onClick={exportCSV} variant="outline" className="rounded-full border-border/60 bg-card/50">
-          <Download className="mr-2 h-4 w-4" /> Export page CSV
+        <Button asChild variant="outline" className="rounded-full border-border/60 bg-card/50">
+          <a href={exportHref} download><Download className="mr-2 h-4 w-4" /> Export all to Excel</a>
         </Button>
       </div>
 
@@ -109,7 +104,7 @@ export function PortalAdminContent({ registrations, totalCount, page, pageSize, 
         <h2 className="mb-6 font-display text-xl font-bold text-foreground">Per-camp breakdown</h2>
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {campBreakdown.map((c) => (
-            <div key={c.campId} className="rounded-2xl border border-border/60 bg-card/50 p-5">
+            <Link key={c.campId} href={`/portal/admin/camps/${c.campId}`} className="block rounded-2xl border border-border/60 bg-card/50 p-5 transition-colors hover:border-primary/40">
               <div className="flex items-center justify-between">
                 <h3 className="font-semibold text-foreground">{c.name}</h3>
                 <span className="text-xs text-muted-foreground">{c.confirmed}/{c.capacity}</span>
@@ -121,7 +116,8 @@ export function PortalAdminContent({ registrations, totalCount, page, pageSize, 
                 <span className="text-muted-foreground">{c.total} registrations</span>
                 <span className="font-semibold text-foreground">EGP {c.revenue.toLocaleString()}</span>
               </div>
-            </div>
+              <p className="mt-3 text-xs font-semibold text-primary">Open camp: analytics &amp; registrations →</p>
+            </Link>
           ))}
         </div>
       </div>

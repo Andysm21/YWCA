@@ -1,6 +1,7 @@
 'use client';
 
 import * as React from 'react';
+import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import {
   Users, CalendarCheck, DollarSign, TrendingUp, Plus, Pencil, Trash2,
@@ -641,7 +642,7 @@ function CampsTab({
               const regCount = campBreakdownById.get(c.id)?.total ?? 0;
               return (
                 <tr key={c.id} className="border-b border-border/40 transition-colors hover:bg-muted/30">
-                  <td className="px-4 py-3 font-medium text-foreground">{c.name}</td>
+                  <td className="px-4 py-3 font-medium text-foreground"><Link href={`/portal/admin/camps/${c.id}`} className="hover:text-primary hover:underline">{c.name}</Link>{regCount > 0 && <span className="ml-2 rounded-full bg-primary/10 px-2 py-0.5 text-xs font-semibold text-primary">{regCount}</span>}</td>
                   <td className="px-4 py-3 capitalize text-muted-foreground">{c.season} {c.year}</td>
                   <td className="px-4 py-3 text-muted-foreground">{formatDateRange(c.dateStart, c.dateEnd)}</td>
                   <td className="px-4 py-3 text-muted-foreground">{c.ageRange}</td>
@@ -703,8 +704,8 @@ function RegistrationsTab({
 
   const columns: Column<RegistrationRow>[] = [
     { key: 'registration_number', label: 'Reg #', sortable: true, render: (r) => <span className="font-mono text-xs text-muted-foreground">{r.registration_number}</span> },
-    { key: 'camper_name', label: 'Camper', sortable: true, render: (r) => <span className="font-medium">{r.camper_name}</span> },
-    { key: 'camps', label: 'Camp', render: (r) => r.camps?.name ?? '—' },
+    { key: 'camper_name', label: 'Camper', sortable: true, render: (r) => <Link href={`/portal/admin/registrations/${r.id}`} className="font-medium text-foreground hover:text-primary hover:underline">{r.camper_name}</Link> },
+    { key: 'camps', label: 'Camp', render: (r) => r.camp_id ? <Link href={`/portal/admin/camps/${r.camp_id}`} className="hover:text-primary hover:underline">{r.camps?.name ?? '—'}</Link> : (r.camps?.name ?? '—') },
     { key: 'created_at', label: 'Registered', sortable: true, render: (r) => <span className="text-xs text-muted-foreground">{new Date(r.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}</span> },
     { key: 'status', label: 'Status', sortable: true, render: (r) => (
       <span className={cn('inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-semibold', statusBadge[r.status])}>{r.status.replace('_', ' ')}</span>
@@ -718,18 +719,12 @@ function RegistrationsTab({
     ) },
   ];
 
-  function exportCSV() {
-    const headers = ['Reg #', 'Camper', 'Camp', 'Status', 'Birth date', 'Grade', 'T-shirt', 'Bus pickup', 'Guardian', 'Email', 'Phone', 'Registered'];
-    const rows = registrations.map((r) => [r.registration_number, r.camper_name, r.camps?.name ?? '', r.status, r.date_of_birth ?? '', r.academic_year ?? '', r.tshirt_size ?? '', r.bus_pickup ?? '', r.parent_name, r.email, r.mobile_phone, r.created_at]);
-    const csv = [headers, ...rows].map((row) => row.map((c) => `"${c}"`).join(',')).join('\n');
-    const blob = new Blob([csv], { type: 'text/csv' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = 'registrations.csv';
-    a.click();
-    URL.revokeObjectURL(url);
-  }
+  const exportHref = (() => {
+    const p = new URLSearchParams();
+    if (campFilter !== 'all') p.set('camp', campFilter);
+    if (statusFilter !== 'all') p.set('status', statusFilter);
+    return `/api/portal/registrations/export${p.toString() ? `?${p}` : ''}`;
+  })();
 
   return (
     <div>
@@ -750,8 +745,8 @@ function RegistrationsTab({
           </select>
         </div>
         <div className="flex gap-2">
-          <Button onClick={exportCSV} size="sm" variant="outline" className="rounded-full border-border/60 bg-card/50">
-            <Download className="mr-1.5 h-4 w-4" /> Export page CSV
+          <Button asChild size="sm" variant="outline" className="rounded-full border-border/60 bg-card/50">
+            <a href={exportHref} download><Download className="mr-1.5 h-4 w-4" /> Export all to Excel</a>
           </Button>
           <Button size="sm" className="rounded-full glow-orange" onClick={() => setShowAdd(true)}>
             <Plus className="mr-1.5 h-4 w-4" /> Add Registration

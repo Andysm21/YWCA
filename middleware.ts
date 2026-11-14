@@ -2,6 +2,9 @@ import { type NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/utils/supabase/middleware';
 import { getStaffRole, ROLE_HOME } from '@/lib/auth/get-staff-role';
 
+/** /portal/admin/* pages that are shared by admin AND super_admin (read + registration actions). */
+const SHARED_STAFF_PREFIXES = ['/portal/admin/analytics', '/portal/admin/camps/', '/portal/admin/registrations/'];
+
 export async function middleware(request: NextRequest) {
   const { supabase, response } = createClient(request);
 
@@ -78,7 +81,7 @@ export async function middleware(request: NextRequest) {
   // strictly admin-only, see below). Carved out before the general admin
   // check so a super_admin session isn't bounced back to their own
   // dashboard just because the URL happens to live under /portal/admin.
-  if (pathname.startsWith('/portal/admin/analytics')) {
+  if (SHARED_STAFF_PREFIXES.some((p) => pathname.startsWith(p))) {
     return role === 'admin' || role === 'super_admin' ? response : NextResponse.redirect(new URL(ROLE_HOME[role], request.url));
   }
 

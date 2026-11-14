@@ -36,7 +36,7 @@ export function PortalSidebar({ mobileOpen = false, onMobileClose }: { mobileOpe
   // apart from an admin there, so resolve the real role for that one
   // ambiguous case instead of guessing from the path.
   const [resolvedRole, setResolvedRole] = React.useState<'admin' | 'super_admin' | null>(null);
-  const isAmbiguousAnalyticsPath = pathname.startsWith('/portal/admin/analytics');
+  const isAmbiguousAnalyticsPath = ['/portal/admin/analytics', '/portal/admin/camps/', '/portal/admin/registrations/'].some((p) => pathname.startsWith(p));
 
   React.useEffect(() => {
     if (!isAmbiguousAnalyticsPath) return;
