@@ -394,33 +394,66 @@ type WaitlistEmailParams = {
 };
 
 export async function sendWaitlistEmail(params: WaitlistEmailParams): Promise<SendResult> {
-  const bodyHtml = `
-    <p style="margin: 0 0 16px; color: ${BRAND.navy}; font-size: 15px; line-height: 1.6;">Hi,</p>
-    <p style="margin: 0 0 16px; color: ${BRAND.navy}; font-size: 15px; line-height: 1.6;">
-      <strong>${escapeHtml(params.campName)}</strong> is currently full. We've added <strong>${escapeHtml(params.camperName)}</strong> to the waitlist at position <strong>${params.waitlistPosition}</strong>.
-    </p>
-    <table role="presentation" width="100%" style="margin: 20px 0; border-collapse: collapse; background: #f5f0e8; border-radius: 10px;">
-      <tr><td style="padding: 16px 20px;">
-        <p style="margin: 0 0 6px; color: #8a8478; font-size: 12px; text-transform: uppercase; letter-spacing: 0.05em;">Registration number</p>
-        <p style="margin: 0; color: ${BRAND.orange}; font-size: 20px; font-weight: 700;">${escapeHtml(params.registrationNumber)}</p>
-      </td></tr>
-    </table>
-    <p style="margin: 0; color: ${BRAND.navy}; font-size: 15px; line-height: 1.6;">We'll email you if a spot opens up — no payment is needed right now.</p>
-  `;
+  const firstName = params.camperName.trim().split(/\s+/)[0] || 'there';
+
+  const contentHtml = `
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background-color:#EAF2FF; border:2px solid #5B8DEF; border-radius:14px;">
+<tr><td style="padding:16px 18px;">
+<p style="margin:0 0 4px; font-size:12px; font-weight:800; letter-spacing:0.1em; color:#1F4FB3;">Status: on the waitlist</p>
+<p style="margin:0; font-size:15px; line-height:1.55; color:#0F2A5C;"><strong>${escapeHtml(params.campName)} is full right now.</strong> We have added ${escapeHtml(params.camperName)} to the waitlist. <strong>No payment is needed &mdash; please do not pay yet.</strong></p>
+</td></tr>
+</table>
+
+<p style="margin:22px 0 22px; font-size:15px; line-height:1.6; color:#4A4D63;">Hi <strong>${escapeHtml(params.camperName)}</strong>, thank you for registering! If a spot opens up, our team will move you up the list and email you a payment link right away. Until you receive that email, there is nothing you need to do.</p>
+
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0">
+${stepRowHtml(1, 'Registration received', 'You are on the waitlist.', 'done')}
+${stepRowHtml(2, 'A spot opens up', 'We email you a payment link if it does. No payment until then.', 'now')}
+${stepRowHtml(3, 'Pay &amp; upload proof of payment', 'Only after you receive that email.', 'next')}
+${stepRowHtml(4, 'We confirm your spot', 'You get a final confirmation email.', 'next')}
+</table>
+
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background-color:#FFF4E8; border-radius:14px; margin-top:6px;">
+<tr><td style="padding:18px 22px;">
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0">
+${detailRowHtml('Registration No.', escapeHtml(params.registrationNumber), '#B34A17')}
+${detailRowHtml('Camp', escapeHtml(params.campName))}
+${detailRowHtml('Camper', escapeHtml(params.camperName))}
+${detailRowHtml('Waitlist position', `#${params.waitlistPosition}`, '#1F4FB3')}
+</table>
+</td></tr>
+</table>
+`;
+
+  const html = emailShell({
+    preheader: `${params.campName} is full. You're on the waitlist (#${params.waitlistPosition}) — no payment needed yet.`,
+    pill: 'Waitlist',
+    pillColor: '#9DBBF5',
+    title: `You&rsquo;re on the waitlist, ${escapeHtml(firstName)}!`,
+    subtitle: `${escapeHtml(params.campName)} is full right now. No payment needed.`,
+    contentHtml,
+  });
 
   return sendMailSafely({
     from: `"YWCA Camp" <${process.env.GMAIL_USER}>`,
     to: params.to,
     subject: `You're on the waitlist — ${params.campName} (${params.registrationNumber})`,
-    html: wrapEmailHtml(bodyHtml),
-    text: `Hi,
+    html,
+    text: `YOU'RE ON THE WAITLIST - NO PAYMENT NEEDED
 
-${params.campName} is currently full. We've added ${params.camperName} to the waitlist at position ${params.waitlistPosition}.
+Hi ${params.camperName},
 
-Registration number: ${params.registrationNumber}
+${params.campName} is full right now. We have added ${params.camperName} to the waitlist at position #${params.waitlistPosition}. Please do NOT pay yet.
 
-We'll email you if a spot opens up — no payment is needed right now.
-${NO_REPLY_TEXT}`,
+If a spot opens up, our team will email you a payment link right away. Until you receive that email, there is nothing you need to do.
+
+Registration No.: ${params.registrationNumber}
+Camp: ${params.campName}
+Camper: ${params.camperName}
+Waitlist position: #${params.waitlistPosition}
+${NO_REPLY_TEXT}
+Kind regards,
+YWCA Camp Team`,
   });
 }
 

@@ -61,9 +61,9 @@ export async function getCampAnalytics(campId: string): Promise<CampAnalytics | 
   if (error) throw error;
   if (!data) return null;
 
-  // Only CONFIRMED registrations fill a spot (the SQL also counted payment_submitted).
+  // Spots held = confirmed payments + payments awaiting confirmation.
   const statusCounts = data.status_counts ?? {};
-  const filled = Number(statusCounts.confirmed ?? 0);
+  const filled = Number(statusCounts.confirmed ?? 0) + Number(statusCounts.payment_submitted ?? 0);
   const capacity = Number(data.capacity ?? 0);
 
   return {
@@ -88,11 +88,11 @@ export async function getSeasonAnalytics(seasonId: string): Promise<SeasonAnalyt
   if (error) throw error;
   if (!data) return null;
 
-  // Only CONFIRMED registrations fill a spot: recount per camp instead of trusting the SQL's filled_count.
+  // Spots held = confirmed + payment_submitted: recount per camp to match the rest of the site.
   const campIds: string[] = (data.camps ?? []).map((c: any) => c.camp_id);
   const confirmedByCamp = new Map<string, number>();
   if (campIds.length) {
-    const { data: confirmedRows, error: confirmedError } = await supabase.from('registrations').select('camp_id').in('camp_id', campIds).eq('status', 'confirmed');
+    const { data: confirmedRows, error: confirmedError } = await supabase.from('registrations').select('camp_id').in('camp_id', campIds).in('status', ['confirmed', 'payment_submitted']);
     if (confirmedError) throw confirmedError;
     for (const r of confirmedRows ?? []) confirmedByCamp.set(r.camp_id, (confirmedByCamp.get(r.camp_id) ?? 0) + 1);
   }
