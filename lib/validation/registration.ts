@@ -89,11 +89,11 @@ const LONG_TEXT_FIELDS: Array<{ key: keyof RegistrationInput; label: string }> =
 ];
 const LONG_TEXT_MAX = 2000;
 
-function isValidEmail(value: string): boolean {
+export function isValidEmail(value: string): boolean {
   return EMAIL_PATTERN.test(value.trim());
 }
 
-function isValidPhone(value: string): boolean {
+export function isValidPhone(value: string): boolean {
   const trimmed = value.trim();
   if (!PHONE_PATTERN.test(trimmed)) return false;
   const digitCount = trimmed.replace(/\D/g, '').length;

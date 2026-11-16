@@ -79,8 +79,9 @@ export async function GET(request: Request) {
     wb.created = new Date();
 
     // ---- Sheet 1: every registration, every field ----
-    const ws = wb.addWorksheet('Registrations', { views: [{ state: 'frozen', ySplit: 1, xSplit: 3 }] });
+    const ws = wb.addWorksheet('Registrations', { views: [{ state: 'frozen', ySplit: 1, xSplit: 4 }] });
     ws.columns = [
+      { header: 'Order', key: 'order', width: 8 },
       { header: 'Reg #', key: 'reg', width: 16 },
       { header: 'Camper', key: 'camper', width: 26 },
       { header: 'Status', key: 'status', width: 18 },
@@ -117,15 +118,19 @@ export async function GET(request: Request) {
       { header: 'Payment proof', key: 'pay', width: 22 },
     ];
 
+    const orderByCamp = new Map<string, number>();
     for (const r of rows) {
       const camp = Array.isArray(r.camps) ? r.camps[0] : r.camps;
       const typeRel = camp?.camp_types;
       const seasonRel = camp?.seasons;
       const season = Array.isArray(seasonRel) ? seasonRel[0] : seasonRel;
       const docs = docsByReg.get(r.id) ?? [];
+      const order = (orderByCamp.get(r.camp_id) ?? 0) + 1; // rows are oldest-first, so this is the registration order within the camp
+      orderByCamp.set(r.camp_id, order);
       const cert = docs.find((d) => d.type === 'certificate');
       const pay = docs.find((d) => d.type === 'payment_screenshot');
       const row = ws.addRow({
+        order,
         reg: r.registration_number,
         camper: r.camper_name,
         status: STATUS_LABEL[r.status] ?? r.status,

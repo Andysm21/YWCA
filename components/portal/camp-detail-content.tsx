@@ -145,7 +145,7 @@ export function CampDetailContent({
       <div className="mt-12">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <h2 className="font-display text-xl font-bold text-foreground">Registrations for this camp</h2>
-          <p className="text-sm text-muted-foreground">{totalCount} {statusFilter !== 'all' || search ? 'match' : 'total'}</p>
+          <p className="text-sm text-muted-foreground">{totalCount} {statusFilter !== 'all' || search ? 'match' : 'total'} · first to register is at the top</p>
         </div>
 
         <div className="-mx-1 mt-4 flex gap-2 overflow-x-auto px-1 pb-1">
@@ -188,12 +188,12 @@ export function CampDetailContent({
             <>
               {/* Phones: cards */}
               <ul className="space-y-3 md:hidden">
-                {registrations.map((r) => (
+                {registrations.map((r, i) => (
                   <li key={r.id}>
                     <Link href={`/portal/admin/registrations/${r.id}`} className="block rounded-2xl border border-border/60 bg-card/50 p-4 transition-colors active:bg-muted/40">
                       <div className="flex items-start justify-between gap-3">
                         <div className="min-w-0">
-                          <p className="truncate font-semibold text-foreground">{r.camper_name}</p>
+                          <p className="truncate font-semibold text-foreground"><span className="mr-1.5 text-primary">#{(page - 1) * pageSize + i + 1}</span>{r.camper_name}</p>
                           <p className="font-mono text-xs text-muted-foreground">{r.registration_number}</p>
                         </div>
                         <StatusBadge status={r.status} />
@@ -215,14 +215,15 @@ export function CampDetailContent({
                 <table className="w-full text-sm">
                   <thead>
                     <tr className="border-b border-border/60 text-left text-muted-foreground">
-                      {['Reg #', 'Camper', 'Status', 'Grade', 'Guardian', 'Contact', 'Email', 'Registered', ''].map((h) => (
+                      {['Order', 'Reg #', 'Camper', 'Status', 'Grade', 'Guardian', 'Contact', 'Email', 'Registered', ''].map((h) => (
                         <th key={h} className="px-4 py-3 font-semibold">{h}</th>
                       ))}
                     </tr>
                   </thead>
                   <tbody>
-                    {registrations.map((r) => (
+                    {registrations.map((r, i) => (
                       <tr key={r.id} className="border-b border-border/40 transition-colors last:border-0 hover:bg-muted/30">
+                        <td className="px-4 py-3 font-display font-bold text-primary">{(page - 1) * pageSize + i + 1}</td>
                         <td className="px-4 py-3 font-mono text-xs text-muted-foreground">{r.registration_number}</td>
                         <td className="px-4 py-3 font-medium text-foreground">{r.camper_name}</td>
                         <td className="px-4 py-3"><StatusBadge status={r.status} /></td>

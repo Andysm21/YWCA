@@ -68,7 +68,7 @@ export async function getRegistrationsPage({ campId, status, search, page = 1, p
   // this is what makes the status filter double as the "waitlist view".
   query = status === 'waitlisted'
     ? query.order('waitlist_position', { ascending: true })
-    : query.order('created_at', { ascending: false });
+    : query.order('created_at', { ascending: true }); // first to register is first: fair order
 
   if (campId) query = query.eq('camp_id', campId);
   if (status) query = query.eq('status', status);
