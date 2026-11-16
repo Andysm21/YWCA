@@ -16,7 +16,7 @@ export async function POST(_request: Request, { params }: { params: { id: string
   try {
     const { data: before, error: fetchError } = await supabase
       .from('registrations')
-      .select('id, status, camper_name')
+      .select('id, status, camper_name, camp_id')
       .eq('id', params.id)
       .maybeSingle();
     if (fetchError) return NextResponse.json({ error: fetchError.message }, { status: 500 });
@@ -25,6 +25,18 @@ export async function POST(_request: Request, { params }: { params: { id: string
     if (before.status !== 'payment_submitted') {
       return NextResponse.json(
         { error: `Cannot confirm — this registration is "${before.status.replace('_', ' ')}", not "payment submitted".` },
+        { status: 409 }
+      );
+    }
+
+    // Only confirmed registrations fill spots: never confirm past the camp's capacity.
+    const [{ data: campRow }, { count: confirmedCount }] = await Promise.all([
+      supabase.from('camps').select('capacity').eq('id', before.camp_id).maybeSingle(),
+      supabase.from('registrations').select('id', { count: 'exact', head: true }).eq('camp_id', before.camp_id).eq('status', 'confirmed'),
+    ]);
+    if (campRow && (confirmedCount ?? 0) >= campRow.capacity) {
+      return NextResponse.json(
+        { error: `This camp is full (${confirmedCount} of ${campRow.capacity} spots confirmed). Increase the camp's capacity before confirming another payment.` },
         { status: 409 }
       );
     }

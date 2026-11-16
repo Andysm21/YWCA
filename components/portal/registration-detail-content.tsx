@@ -3,12 +3,14 @@
 import * as React from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { ArrowLeft, Download, ExternalLink, FileText, FileImage, AlertTriangle, Mail, Phone, User, Users, HeartPulse, ClipboardList, FolderOpen } from 'lucide-react';
+import { ArrowLeft, Pencil, Trash2, Loader2, Check, Download, ExternalLink, FileText, FileImage, AlertTriangle, Mail, Phone, User, Users, HeartPulse, ClipboardList, FolderOpen } from 'lucide-react';
 import { StatusBadge } from '@/components/portal/status-badge';
 import { RegistrationActionsCell } from '@/components/portal/registration-actions-cell';
 import { EmailStatusCell } from '@/components/portal/email-status-cell';
 import { ConfirmDialog, type ConfirmState } from '@/components/portal/confirm-dialog';
 import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 import { formatDate, formatDateRange } from '@/lib/camp-data';
 import type { RegistrationDocument, RegistrationRow } from '@/lib/queries/registrations';
 
@@ -98,12 +100,150 @@ function DocumentCard({ registrationId, doc }: { registrationId: string; doc: Re
   );
 }
 
+const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
+
+/** Fix a wrong email: edit guardian/camper email, optionally re-send the right email to the new address. */
+function EditEmailsCard({ r, onConfirm }: { r: Record<string, any>; onConfirm: (s: NonNullable<ConfirmState>) => void }) {
+  const router = useRouter();
+  const [open, setOpen] = React.useState(false);
+  const [parentEmail, setParentEmail] = React.useState<string>(r.parent_email ?? '');
+  const [camperEmail, setCamperEmail] = React.useState<string>(r.email ?? '');
+  const [busy, setBusy] = React.useState<'save' | 'resend' | null>(null);
+  const [error, setError] = React.useState<string | null>(null);
+  const [note, setNote] = React.useState<string | null>(null);
+  const resendable = ['pending_payment', 'waitlisted', 'confirmed'].includes(r.status);
+  const changed = parentEmail.trim().toLowerCase() !== (r.parent_email ?? '') || camperEmail.trim().toLowerCase() !== (r.email ?? '');
+
+  async function save(resend: boolean) {
+    setError(null);
+    setNote(null);
+    if (!EMAIL_RE.test(parentEmail.trim()) || !EMAIL_RE.test(camperEmail.trim())) {
+      setError('Enter valid email addresses.');
+      return;
+    }
+    setBusy(resend ? 'resend' : 'save');
+    try {
+      const res = await fetch(`/api/portal/registrations/${r.id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ parent_email: parentEmail, email: camperEmail }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Could not save');
+      let message = 'Email updated.';
+      if (resend) {
+        const rr = await fetch(`/api/portal/registrations/${r.id}/resend-email`, { method: 'POST' });
+        const rd = await rr.json().catch(() => ({}));
+        message = rr.ok ? 'Email updated and the email was re-sent to the new address.' : `Email updated, but re-sending failed: ${rd.error ?? 'unknown error'}`;
+      }
+      setNote(message);
+      setOpen(false);
+      router.refresh();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Could not save');
+    } finally {
+      setBusy(null);
+    }
+  }
+
+  return (
+    <section className="rounded-2xl border border-border/60 bg-card/50 p-5 sm:p-6">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <h2 className="flex items-center gap-2.5 font-display text-lg font-bold text-foreground">
+          <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary/10 text-primary"><Mail className="h-4 w-4" /></span>
+          Fix a wrong email
+        </h2>
+        {!open && (
+          <Button size="sm" variant="outline" className="rounded-full border-border/60 bg-transparent" onClick={() => setOpen(true)}>
+            <Pencil className="mr-1.5 h-3.5 w-3.5" /> Edit emails
+          </Button>
+        )}
+      </div>
+      {note && <p className="mt-3 flex items-center gap-1.5 text-sm text-emerald-500"><Check className="h-4 w-4" /> {note}</p>}
+      {open && (
+        <div className="mt-4 space-y-4">
+          <div className="grid gap-4 sm:grid-cols-2">
+            <div className="space-y-2">
+              <Label htmlFor="parentEmail">Guardian email <span className="text-xs text-muted-foreground">(payment &amp; confirmation emails go here)</span></Label>
+              <Input id="parentEmail" type="email" inputMode="email" value={parentEmail} onChange={(e) => setParentEmail(e.target.value)} className="rounded-xl bg-background/50" />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="camperEmail">Camper email</Label>
+              <Input id="camperEmail" type="email" inputMode="email" value={camperEmail} onChange={(e) => setCamperEmail(e.target.value)} className="rounded-xl bg-background/50" />
+            </div>
+          </div>
+          {error && <p className="text-sm text-rose-500">{error}</p>}
+          <div className="flex flex-wrap gap-2">
+            {resendable && (
+              <Button size="sm" className="rounded-full glow-orange" disabled={!!busy || !changed} onClick={() => save(true)}>
+                {busy === 'resend' ? <Loader2 className="mr-1.5 h-4 w-4 animate-spin" /> : <Mail className="mr-1.5 h-4 w-4" />} Save &amp; re-send email
+              </Button>
+            )}
+            <Button size="sm" variant="outline" className="rounded-full border-border/60 bg-transparent" disabled={!!busy || !changed} onClick={() => save(false)}>
+              {busy === 'save' ? <Loader2 className="mr-1.5 h-4 w-4 animate-spin" /> : null} Save only
+            </Button>
+            <Button size="sm" variant="ghost" className="rounded-full" disabled={!!busy} onClick={() => { setOpen(false); setError(null); setParentEmail(r.parent_email ?? ''); setCamperEmail(r.email ?? ''); }}>Cancel</Button>
+          </div>
+          {resendable && <p className="text-xs text-muted-foreground">&quot;Save &amp; re-send&quot; sends the right email for this registration ({r.status === 'confirmed' ? 'the spot-secured confirmation' : r.status === 'waitlisted' ? 'the waitlist email' : 'the payment link'}) to the new address.</p>}
+        </div>
+      )}
+    </section>
+  );
+}
+
+/** Super Admin: permanently remove a wrong or duplicate registration. */
+function DeleteRegistrationCard({ r, campId, onConfirm }: { r: Record<string, any>; campId: string | null; onConfirm: (s: NonNullable<ConfirmState>) => void }) {
+  const router = useRouter();
+  const [busy, setBusy] = React.useState(false);
+  const [error, setError] = React.useState<string | null>(null);
+
+  async function remove() {
+    setBusy(true);
+    setError(null);
+    try {
+      const res = await fetch(`/api/portal/registrations/${r.id}`, { method: 'DELETE' });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Could not remove the registration');
+      router.replace(campId ? `/portal/admin/camps/${campId}` : '/portal/super-admin?tab=registrations');
+      router.refresh();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Could not remove the registration');
+      setBusy(false);
+    }
+  }
+
+  return (
+    <section className="rounded-2xl border border-rose-500/30 bg-rose-500/5 p-5 sm:p-6">
+      <h2 className="flex items-center gap-2.5 font-display text-lg font-bold text-foreground">
+        <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-rose-500/15 text-rose-500"><Trash2 className="h-4 w-4" /></span>
+        Remove this registration
+      </h2>
+      <p className="mt-2 text-sm text-muted-foreground">For a wrong or duplicate registration. It is deleted permanently{r.status === 'confirmed' ? ' and its confirmed spot is freed' : ''}. Uploaded files stay in Google Drive.</p>
+      {error && <p className="mt-2 text-sm text-rose-500">{error}</p>}
+      <Button
+        size="sm"
+        variant="outline"
+        className="mt-3 rounded-full border-rose-500/40 bg-transparent text-rose-500 hover:text-rose-500"
+        disabled={busy}
+        onClick={() => onConfirm({
+          title: `Permanently remove ${r.camper_name}'s registration?`,
+          description: `${r.registration_number} will be deleted for good, together with its document records. ${r.status === 'confirmed' ? 'It is CONFIRMED and paid: only remove it if the payment is being handled separately. ' : ''}This cannot be undone.`,
+          onConfirm: () => { remove(); },
+        })}
+      >
+        {busy ? <Loader2 className="mr-1.5 h-4 w-4 animate-spin" /> : <Trash2 className="mr-1.5 h-4 w-4" />} Remove registration
+      </Button>
+    </section>
+  );
+}
+
 export function RegistrationDetailContent({
-  registration: r, camp, documents,
+  registration: r, camp, documents, isSuperAdmin = false,
 }: {
   registration: Record<string, any>;
   camp: Camp;
   documents: RegistrationDocument[];
+  isSuperAdmin?: boolean;
 }) {
   const router = useRouter();
   const [confirmState, setConfirmState] = React.useState<ConfirmState>(null);
@@ -194,6 +334,11 @@ export function RegistrationDetailContent({
             value={<EmailStatusCell registrationId={r.id} status={r.email_status} failureReason={r.email_failure_reason} />}
           />
         </Section>
+      </div>
+
+      <div className="mt-5 space-y-5">
+        <EditEmailsCard r={r} onConfirm={setConfirmState} />
+        {isSuperAdmin && <DeleteRegistrationCard r={r} campId={camp?.id ?? null} onConfirm={setConfirmState} />}
       </div>
 
       <div className="mt-6 flex flex-wrap gap-2 text-sm">

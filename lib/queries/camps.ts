@@ -69,7 +69,7 @@ async function getSpotsLeftMap(supabase: SupabaseClient, campIds: string[], capa
     .from('registrations')
     .select('camp_id')
     .in('camp_id', campIds)
-    .in('status', ['confirmed', 'payment_submitted']);
+    .eq('status', 'confirmed'); // only confirmed (paid + approved) registrations fill a spot
   if (error) throw error;
 
   const counts: Record<string, number> = {};

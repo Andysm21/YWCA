@@ -78,7 +78,7 @@ export async function POST(request: Request) {
     .from('registrations')
     .select('id', { count: 'exact', head: true })
     .eq('camp_id', camp.id)
-    .in('status', ['confirmed', 'payment_submitted']);
+    .eq('status', 'confirmed'); // only confirmed (paid + approved) registrations fill a spot
   if (countError) return NextResponse.json({ error: countError.message }, { status: 500 });
 
   const spotsLeft = camp.capacity - (filledCount ?? 0);
