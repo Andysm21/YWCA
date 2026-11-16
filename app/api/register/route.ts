@@ -6,6 +6,7 @@ import { getMeetingPoints } from '@/lib/queries/site-settings';
 import { isRateLimited } from '@/lib/rate-limit';
 import { newColumnsReady } from '@/lib/schema-features';
 import { openDueCamps } from '@/lib/camp-scheduling';
+import { getHeldSpots } from '@/lib/queries/held-spots';
 import { validateRegistrationInput, gradeOptionsForCamp, tshirtSizesForCamp } from '@/lib/validation/registration';
 
 export async function POST(request: Request) {
@@ -74,15 +75,10 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: `For this camp, the date of birth must be ${dobMin && dobMax ? `between ${dobMin} and ${dobMax}` : dobMin ? `on or after ${dobMin}` : `on or before ${dobMax}`}.` }, { status: 400 });
   }
 
-  const { count: filledCount, error: countError } = await supabase
-    .from('registrations')
-    .select('id', { count: 'exact', head: true })
-    .eq('camp_id', camp.id)
-    // A spot is taken by a confirmed payment OR a payment awaiting confirmation. Anyone beyond that is waitlisted (no payment asked).
-    .in('status', ['confirmed', 'payment_submitted']);
-  if (countError) return NextResponse.json({ error: countError.message }, { status: 500 });
+  // Held spots = confirmed + awaiting confirmation + promoted-from-waitlist still paying. Anyone beyond that is waitlisted (no payment asked).
+  const filledCount = await getHeldSpots(camp.id);
 
-  const spotsLeft = camp.capacity - (filledCount ?? 0);
+  const spotsLeft = camp.capacity - filledCount;
   const willWaitlist = spotsLeft <= 0;
 
   let waitlistPosition: number | null = null;

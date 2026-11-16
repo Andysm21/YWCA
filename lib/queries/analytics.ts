@@ -1,6 +1,7 @@
 import 'server-only';
 import { cookies } from 'next/headers';
 import { createClient as createServerClient } from '@/utils/supabase/server';
+import { getHeldSpotsByCamp } from '@/lib/queries/held-spots';
 
 export type CampAnalytics = {
   campId: string;
@@ -61,9 +62,9 @@ export async function getCampAnalytics(campId: string): Promise<CampAnalytics | 
   if (error) throw error;
   if (!data) return null;
 
-  // Spots held = confirmed payments + payments awaiting confirmation.
+  // Spots held = confirmed + awaiting confirmation + promoted-from-waitlist still paying.
   const statusCounts = data.status_counts ?? {};
-  const filled = Number(statusCounts.confirmed ?? 0) + Number(statusCounts.payment_submitted ?? 0);
+  const filled = (await getHeldSpotsByCamp([campId]))[campId] ?? 0;
   const capacity = Number(data.capacity ?? 0);
 
   return {
@@ -88,14 +89,9 @@ export async function getSeasonAnalytics(seasonId: string): Promise<SeasonAnalyt
   if (error) throw error;
   if (!data) return null;
 
-  // Spots held = confirmed + payment_submitted: recount per camp to match the rest of the site.
+  // Spots held per camp (see getHeldSpotsByCamp), instead of the SQL's filled_count.
   const campIds: string[] = (data.camps ?? []).map((c: any) => c.camp_id);
-  const confirmedByCamp = new Map<string, number>();
-  if (campIds.length) {
-    const { data: confirmedRows, error: confirmedError } = await supabase.from('registrations').select('camp_id').in('camp_id', campIds).in('status', ['confirmed', 'payment_submitted']);
-    if (confirmedError) throw confirmedError;
-    for (const r of confirmedRows ?? []) confirmedByCamp.set(r.camp_id, (confirmedByCamp.get(r.camp_id) ?? 0) + 1);
-  }
+  const heldByCamp = await getHeldSpotsByCamp(campIds);
 
   return {
     seasonId: data.season_id,
@@ -109,8 +105,8 @@ export async function getSeasonAnalytics(seasonId: string): Promise<SeasonAnalyt
       campId: c.camp_id,
       campName: c.camp_name,
       capacity: c.capacity,
-      filledCount: confirmedByCamp.get(c.camp_id) ?? 0,
-      fillRatePct: Number(c.capacity) > 0 ? Math.round(((confirmedByCamp.get(c.camp_id) ?? 0) / Number(c.capacity)) * 1000) / 10 : 0,
+      filledCount: heldByCamp[c.camp_id] ?? 0,
+      fillRatePct: Number(c.capacity) > 0 ? Math.round(((heldByCamp[c.camp_id] ?? 0) / Number(c.capacity)) * 1000) / 10 : 0,
       waitlistSize: c.waitlist_size ?? 0,
       confirmedRevenueEgp: Number(c.confirmed_revenue_egp ?? 0),
       pendingConfirmationRevenueEgp: Number(c.pending_confirmation_revenue_egp ?? 0),

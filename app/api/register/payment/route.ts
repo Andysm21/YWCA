@@ -4,6 +4,7 @@ import { getOrCreateCampFolders, uploadFileToDrive } from '@/lib/google-drive';
 import { sendWaitlistEmail } from '@/lib/email';
 import { recordEmailResult } from '@/lib/registration-email';
 import { isRateLimited } from '@/lib/rate-limit';
+import { getHeldSpots } from '@/lib/queries/held-spots';
 
 const MAX_FILE_BYTES = 10 * 1024 * 1024;
 const ALLOWED_MIME_PREFIX = 'image/';
@@ -121,14 +122,10 @@ export async function POST(request: Request) {
     // registrations may have gone payment_submitted/confirmed, or a
     // waitlist promotion may have happened, and filled the camp. Never
     // trust that a spot reserved at Step 1 is still available at Step 2.
-    const { count: filledCount, error: countError } = await supabase
-      .from('registrations')
-      .select('id', { count: 'exact', head: true })
-      .eq('camp_id', registration.camp_id)
-      .in('status', ['confirmed', 'payment_submitted']); // confirmed + awaiting confirmation hold the spots
-    if (countError) return NextResponse.json({ error: countError.message }, { status: 500 });
+    // Held spots, not counting this registration's own hold (a promoted registrant keeps their spot while paying).
+    const filledCount = await getHeldSpots(registration.camp_id, registration.id);
 
-    if ((filledCount ?? 0) >= camp.capacity) {
+    if (filledCount >= camp.capacity) {
       // Camp filled up since Step 1 — move to waitlist instead of accepting
       // documents for a spot that no longer exists. Files are NOT uploaded;
       // nothing to do with them for a waitlisted registration.

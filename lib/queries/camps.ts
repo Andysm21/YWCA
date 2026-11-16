@@ -4,6 +4,7 @@ import { createClient as createServerClient } from '@/utils/supabase/server';
 import { createAnonClient } from '@/utils/supabase/anon';
 import { newColumnsReady, scheduleReady } from '@/lib/schema-features';
 import { openDueCamps } from '@/lib/camp-scheduling';
+import { getHeldSpotsByCamp } from '@/lib/queries/held-spots';
 import { cookies } from 'next/headers';
 import {
   deriveCampVisuals,
@@ -62,23 +63,13 @@ function getAnonClient() {
   return createAnonClient();
 }
 
-/** One query for camp_id -> live spots-left, instead of one query per camp. */
-async function getSpotsLeftMap(supabase: SupabaseClient, campIds: string[], capacityByCamp: Record<string, number>) {
+/** One query for camp_id -> live spots-left (held spots = confirmed + awaiting confirmation + promoted-and-paying). */
+async function getSpotsLeftMap(_supabase: SupabaseClient, campIds: string[], capacityByCamp: Record<string, number>) {
   if (campIds.length === 0) return {} as Record<string, number>;
-  const { data, error } = await supabase
-    .from('registrations')
-    .select('camp_id')
-    .in('camp_id', campIds)
-    .in('status', ['confirmed', 'payment_submitted']); // confirmed + awaiting confirmation hold the spots
-  if (error) throw error;
-
-  const counts: Record<string, number> = {};
-  for (const row of data ?? []) {
-    counts[row.camp_id] = (counts[row.camp_id] ?? 0) + 1;
-  }
+  const held = await getHeldSpotsByCamp(campIds);
   const spotsLeft: Record<string, number> = {};
   for (const id of campIds) {
-    spotsLeft[id] = Math.max(0, (capacityByCamp[id] ?? 0) - (counts[id] ?? 0));
+    spotsLeft[id] = Math.max(0, (capacityByCamp[id] ?? 0) - (held[id] ?? 0));
   }
   return spotsLeft;
 }
