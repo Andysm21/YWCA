@@ -329,7 +329,7 @@ export function RegisterContent({ camp }: { camp: Camp }) {
                 </div>
                 <h2 className="font-display text-2xl font-bold text-foreground">You&apos;re on the waitlist!</h2>
                 <p className="mt-2 text-muted-foreground">
-                  {`${camp.name} is full right now, so we've added ${step1.camperName} to the waitlist (position ${result.waitlist_position}). You don't need to pay anything yet. If a spot opens up, we'll email a payment link to ${step2.parentEmail}.`}
+                  {`${camp.name} is full right now, so we've added ${step1.camperName} to the waitlist. You don't need to pay anything yet. If a spot opens up, we'll email a payment link to ${step2.parentEmail}.`}
                 </p>
               </>
             ) : (

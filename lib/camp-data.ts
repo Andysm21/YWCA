@@ -111,7 +111,7 @@ export function getDisplayStatus(camp: Pick<Camp, 'dbStatus' | 'spotsLeft' | 'ca
   if (camp.dbStatus === 'closed') return 'closed';
   if (camp.dbStatus === 'coming_soon') return 'coming-soon';
   if (camp.spotsLeft <= 0) return 'waitlist';
-  if (camp.spotsLeft / camp.capacity <= 0.2) return 'filling';
+  // No 'almost full' label: guests must not be able to read how full a camp is.
   return 'open';
 }
 

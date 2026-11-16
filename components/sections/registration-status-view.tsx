@@ -35,7 +35,7 @@ const STATUS_CONTENT: Record<RegistrationStatus, { icon: typeof CheckCircle2; ic
     icon: ListOrdered,
     iconClass: 'bg-rose-500/15 text-rose-400',
     title: "You're on the waitlist",
-    message: (p) => `${p.campName} is currently full${p.waitlistPosition ? ` — you're at position ${p.waitlistPosition}` : ''}. We'll email you if a spot opens up. No payment is needed right now.`,
+    message: (p) => `${p.campName} is currently full. We'll email you if a spot opens up. No payment is needed right now.`,
   },
   refunded: {
     icon: XCircle,

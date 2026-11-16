@@ -7,6 +7,7 @@ import { isRateLimited } from '@/lib/rate-limit';
 import { newColumnsReady } from '@/lib/schema-features';
 import { openDueCamps } from '@/lib/camp-scheduling';
 import { getHeldSpots } from '@/lib/queries/held-spots';
+import { generateRegistrationNumber } from '@/lib/registration-number';
 import { validateRegistrationInput, gradeOptionsForCamp, tshirtSizesForCamp } from '@/lib/validation/registration';
 
 export async function POST(request: Request) {
@@ -92,13 +93,7 @@ export async function POST(request: Request) {
     waitlistPosition = (waitlistCount ?? 0) + 1;
   }
 
-  const { data: regNumber, error: rpcError } = await supabase.rpc('generate_registration_number');
-  if (rpcError) return NextResponse.json({ error: rpcError.message }, { status: 500 });
-
-  const { data: registration, error: insertError } = await supabase
-    .from('registrations')
-    .insert({
-      registration_number: regNumber,
+  const baseRow = {
       camp_id: camp.id,
       status: willWaitlist ? 'waitlisted' : 'pending_payment',
       waitlist_position: waitlistPosition,
@@ -119,11 +114,27 @@ export async function POST(request: Request) {
       emergency_contact_number: body.emergencyContactNumber,
       medical_condition: body.medicalCondition || null,
       additional_info: body.additionalInfo || null,
-    })
-    .select('id, registration_number, status, waitlist_position')
-    .single();
+  };
 
-  if (insertError) return NextResponse.json({ error: insertError.message }, { status: 500 });
+  // Registration numbers are random; retry on the (very unlikely) collision.
+  let registration: { id: string; registration_number: string; status: string; waitlist_position: number | null } | null = null;
+  let insertError: { message: string; code?: string } | null = null;
+  for (let attempt = 0; attempt < 5 && !registration; attempt++) {
+    const res = await supabase
+      .from('registrations')
+      .insert({ ...baseRow, registration_number: generateRegistrationNumber() })
+      .select('id, registration_number, status, waitlist_position')
+      .single();
+    if (res.error) {
+      insertError = res.error;
+      if (res.error.code !== '23505') break;
+    } else {
+      registration = res.data;
+      insertError = null;
+    }
+  }
+
+  if (insertError || !registration) return NextResponse.json({ error: insertError?.message ?? 'Could not save the registration' }, { status: 500 });
 
   // Best-effort — a failed email should never fail a registration that
   // already succeeded, but the outcome IS recorded (email_status /

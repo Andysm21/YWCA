@@ -2,7 +2,11 @@
 
 import * as React from 'react';
 import { useRouter } from 'next/navigation';
-import { Check, RotateCcw, ArrowUpCircle, Loader2 } from 'lucide-react';
+import { Check, RotateCcw, ArrowUpCircle, Loader2, ShieldAlert } from 'lucide-react';
+import {
+  AlertDialog, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
+import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { RefundDialog } from '@/components/portal/refund-dialog';
 import type { RegistrationRow } from '@/lib/queries/registrations';
@@ -24,6 +28,9 @@ export function RegistrationActionsCell({
   const [busy, setBusy] = React.useState(false);
   const [refundOpen, setRefundOpen] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);
+  const [overrideOpen, setOverrideOpen] = React.useState(false);
+  const [overridePassword, setOverridePassword] = React.useState('');
+  const [overrideError, setOverrideError] = React.useState<string | null>(null);
 
   async function callAction(path: string, body?: Record<string, unknown>) {
     setBusy(true);
@@ -36,14 +43,27 @@ export function RegistrationActionsCell({
       });
       const data = await res.json();
       if (!res.ok) {
-        const err = new Error(data.error || 'Action failed') as Error & { outOfOrder?: boolean; earlierPosition?: number };
+        const err = new Error(data.error || 'Action failed') as Error & { outOfOrder?: boolean; earlierPosition?: number; capacityFull?: boolean; canOverride?: boolean; wrongPassword?: boolean };
         err.outOfOrder = data.outOfOrder;
         err.earlierPosition = data.earlierPosition;
+        err.capacityFull = data.capacityFull;
+        err.canOverride = data.canOverride;
+        err.wrongPassword = data.wrongPassword;
         throw err;
       }
       router.refresh();
       return true;
     } catch (err) {
+      if (err instanceof Error && (err as any).capacityFull) {
+        setBusy(false);
+        if ((err as any).canOverride) {
+          setOverrideError((err as any).wrongPassword ? 'Wrong password. Try again.' : null);
+          setOverrideOpen(true);
+        } else {
+          setError(err.message);
+        }
+        return false;
+      }
       if (err instanceof Error && (err as any).outOfOrder) {
         setBusy(false);
         onConfirm({
@@ -57,6 +77,16 @@ export function RegistrationActionsCell({
       return false;
     } finally {
       setBusy(false);
+    }
+  }
+
+  async function submitOverride() {
+    if (!overridePassword) return;
+    setOverrideError(null);
+    const ok = await callAction('promote', { force: true, override_password: overridePassword });
+    if (ok) {
+      setOverrideOpen(false);
+      setOverridePassword('');
     }
   }
 
@@ -113,6 +143,36 @@ export function RegistrationActionsCell({
           {busy ? <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" /> : <ArrowUpCircle className="mr-1.5 h-3.5 w-3.5" />} Promote
         </Button>
         {error && <p className="mt-1 text-xs text-rose-400">{error}</p>}
+        <AlertDialog open={overrideOpen} onOpenChange={(o) => { if (!o && !busy) { setOverrideOpen(false); setOverridePassword(''); } }}>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle className="flex items-center gap-2 text-foreground">
+                <ShieldAlert className="h-5 w-5 text-amber-400" /> Camp is at full capacity
+              </AlertDialogTitle>
+              <AlertDialogDescription>
+                Promoting {registration.camper_name} will put this camp over its capacity. Enter your Super Admin password to confirm. This is recorded in the audit log.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <form onSubmit={(e) => { e.preventDefault(); submitOverride(); }} className="space-y-3">
+              <Input
+                type="password"
+                autoFocus
+                autoComplete="current-password"
+                placeholder="Your password"
+                value={overridePassword}
+                onChange={(e) => setOverridePassword(e.target.value)}
+                className="rounded-xl"
+              />
+              {overrideError && <p className="text-sm text-rose-400">{overrideError}</p>}
+              <AlertDialogFooter>
+                <AlertDialogCancel type="button" disabled={busy}>Cancel</AlertDialogCancel>
+                <Button type="submit" className="rounded-full" disabled={busy || !overridePassword}>
+                  {busy ? <Loader2 className="mr-1.5 h-4 w-4 animate-spin" /> : <ArrowUpCircle className="mr-1.5 h-4 w-4" />} Promote anyway
+                </Button>
+              </AlertDialogFooter>
+            </form>
+          </AlertDialogContent>
+        </AlertDialog>
       </div>
     );
   }

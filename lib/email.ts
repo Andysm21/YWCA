@@ -419,14 +419,13 @@ ${stepRowHtml(4, 'We confirm your spot', 'You get a final confirmation email.', 
 ${detailRowHtml('Registration No.', escapeHtml(params.registrationNumber), '#B34A17')}
 ${detailRowHtml('Camp', escapeHtml(params.campName))}
 ${detailRowHtml('Camper', escapeHtml(params.camperName))}
-${detailRowHtml('Waitlist position', `#${params.waitlistPosition}`, '#1F4FB3')}
 </table>
 </td></tr>
 </table>
 `;
 
   const html = emailShell({
-    preheader: `${params.campName} is full. You're on the waitlist (#${params.waitlistPosition}) — no payment needed yet.`,
+    preheader: `${params.campName} is full. You're on the waitlist — no payment needed yet.`,
     pill: 'Waitlist',
     pillColor: '#9DBBF5',
     title: `You&rsquo;re on the waitlist, ${escapeHtml(firstName)}!`,
@@ -443,14 +442,13 @@ ${detailRowHtml('Waitlist position', `#${params.waitlistPosition}`, '#1F4FB3')}
 
 Hi ${params.camperName},
 
-${params.campName} is full right now. We have added ${params.camperName} to the waitlist at position #${params.waitlistPosition}. Please do NOT pay yet.
+${params.campName} is full right now. We have added ${params.camperName} to the waitlist. Please do NOT pay yet.
 
 If a spot opens up, our team will email you a payment link right away. Until you receive that email, there is nothing you need to do.
 
 Registration No.: ${params.registrationNumber}
 Camp: ${params.campName}
 Camper: ${params.camperName}
-Waitlist position: #${params.waitlistPosition}
 ${NO_REPLY_TEXT}
 Kind regards,
 YWCA Camp Team`,
@@ -477,11 +475,11 @@ export async function sendWaitlistPromotedEmail(params: WaitlistPromotedEmailPar
 <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background-color:#FFF6DD; border:2px solid #F5B83D; border-radius:14px;">
 <tr><td style="padding:16px 18px;">
 <p style="margin:0 0 4px; font-size:12px; font-weight:800; letter-spacing:0.1em; color:#9A6A00;">Status: pending payment</p>
-<p style="margin:0; font-size:15px; line-height:1.55; color:#3D2F00;"><strong>A spot is open for you, but it is not secured yet.</strong> It is yours once you pay the full amount <em>and</em> upload your proof of payment.</p>
+<p style="margin:0; font-size:15px; line-height:1.55; color:#3D2F00;"><strong>It&rsquo;s your turn! A spot is held for you, but it is not secured yet.</strong> It is yours once you pay the full amount <em>and</em> upload your proof of payment.</p>
 </td></tr>
 </table>
 
-<p style="margin:22px 0 22px; font-size:15px; line-height:1.6; color:#4A4D63;">Hi <strong>${escapeHtml(params.camperName)}</strong>, a place opened up in <strong>${escapeHtml(params.campName)}</strong> and you are off the waitlist. To claim it:</p>
+<p style="margin:22px 0 22px; font-size:15px; line-height:1.6; color:#4A4D63;">Hi <strong>${escapeHtml(params.camperName)}</strong>, a place opened up in <strong>${escapeHtml(params.campName)}</strong> and you are now off the waitlist. We are holding it for you &mdash; to claim it:</p>
 
 <table role="presentation" width="100%" cellpadding="0" cellspacing="0">
 ${stepRowHtml(1, `Pay the full amount — EGP ${priceLabel}`, 'Use the button below to open your personal payment page.', 'now')}
@@ -510,20 +508,20 @@ ${detailRowHtml('Amount due', `EGP ${priceLabel}`, '#1A6B5C')}
 `;
 
   const html = emailShell({
-    preheader: `A spot opened up in ${params.campName} — pay in full and upload your proof of payment to claim it.`,
-    pill: 'Good news',
+    preheader: `It's your turn! A spot opened up in ${params.campName} — pay now and upload your proof of payment to claim it.`,
+    pill: 'Off the waitlist',
     pillColor: '#6EE7B7',
-    title: `A spot opened up, ${escapeHtml(firstName)}!`,
-    subtitle: `You're off the waitlist for ${escapeHtml(params.campName)}.`,
+    title: `It&rsquo;s your turn, ${escapeHtml(firstName)}! 🎉`,
+    subtitle: `You&rsquo;re off the waitlist for ${escapeHtml(params.campName)} &mdash; time to pay.`,
     contentHtml,
   });
 
   return sendMailSafely({
     from: `"YWCA Camp" <${process.env.GMAIL_USER}>`,
     to: params.to,
-    subject: `A spot opened up in ${params.campName} (${params.registrationNumber})`,
+    subject: `It's your turn! A spot opened up in ${params.campName} (${params.registrationNumber})`,
     html,
-    text: `GOOD NEWS - A SPOT OPENED UP (NOT SECURED YET)
+    text: `IT'S YOUR TURN - YOU'RE OFF THE WAITLIST (NOT SECURED YET)
 
 Hi ${params.camperName},
 
