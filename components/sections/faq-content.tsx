@@ -21,7 +21,7 @@ export function FaqContent() {
               {item.question}
             </AccordionTrigger>
             <AccordionContent className="text-sm leading-relaxed text-muted-foreground">
-              <p>{item.answer}</p>
+              <p className="whitespace-pre-line">{item.answer}</p>
               {item.link && (
                 <Button asChild size="sm" className="mt-4 rounded-full glow-orange">
                   <Link href={item.link.href}>{item.link.label}<ArrowRight className="ml-1.5 h-4 w-4" /></Link>
