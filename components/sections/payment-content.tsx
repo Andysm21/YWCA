@@ -3,6 +3,7 @@
 import * as React from 'react';
 import Link from 'next/link';
 import { PaymentReceivedCelebration } from '@/components/shared/status-celebration';
+import { shrinkImage } from '@/lib/shrink-image';
 import { Copy, Check, Loader2, Upload, PartyPopper, AlertCircle, Search } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -78,14 +79,33 @@ export function PaymentContent({ camp, bankDetails, initialCode }: Props) {
 
     setSubmitting(true);
     try {
+      // Phone photos are often 3-5 MB each, but the server only accepts ~4.5 MB in total: shrink them first.
+      const MAX_TOTAL = 4 * 1024 * 1024;
+      let cert = await shrinkImage(certificate, 1600, 0.8);
+      let pay = await shrinkImage(paymentScreenshot, 1600, 0.8);
+      if (cert.size + pay.size > MAX_TOTAL) {
+        cert = await shrinkImage(certificate, 1200, 0.65);
+        pay = await shrinkImage(paymentScreenshot, 1200, 0.65);
+      }
+      if (cert.size + pay.size > MAX_TOTAL) {
+        throw new Error('The two photos are still too large to send. Please choose smaller photos (for example a screenshot instead of a camera photo) and try again.');
+      }
+
       const formData = new FormData();
       formData.set('registrationNumber', registrationNumber.trim());
-      formData.set('certificate', certificate);
-      formData.set('paymentScreenshot', paymentScreenshot);
+      formData.set('certificate', cert);
+      formData.set('paymentScreenshot', pay);
 
       const res = await fetch('/api/register/payment', { method: 'POST', body: formData });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || 'Failed to submit payment.');
+      // Read as text first: error pages from the host are not JSON, and res.json() would throw a confusing browser error.
+      const raw = await res.text();
+      let data: any = null;
+      try { data = JSON.parse(raw); } catch { /* not JSON */ }
+      if (!res.ok) {
+        if (res.status === 413) throw new Error('The photos are too large to send. Please choose smaller photos and try again.');
+        throw new Error(data?.error || 'Something went wrong while sending your payment. Please try again in a moment. Nothing was lost, your registration is still pending.');
+      }
+      if (!data) throw new Error('We could not read the server response. Please check your registration status or try again.');
       setResult(data);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to submit payment.');
@@ -206,12 +226,12 @@ export function PaymentContent({ camp, bankDetails, initialCode }: Props) {
           )}
 
           <div className="space-y-2">
-            <Label htmlFor="certificate">Certificate (image, max 10MB) *</Label>
+            <Label htmlFor="certificate">Certificate (photo or image) *</Label>
             <Input id="certificate" type="file" accept="image/*" required onChange={(e) => setCertificate(e.target.files?.[0] ?? null)} className="rounded-xl bg-background/50 file:text-foreground" />
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="paymentScreenshot">Payment screenshot (image, max 10MB) *</Label>
+            <Label htmlFor="paymentScreenshot">Payment screenshot (photo or image) *</Label>
             <Input id="paymentScreenshot" type="file" accept="image/*" required onChange={(e) => setPaymentScreenshot(e.target.files?.[0] ?? null)} className="rounded-xl bg-background/50 file:text-foreground" />
           </div>
 
@@ -223,7 +243,7 @@ export function PaymentContent({ camp, bankDetails, initialCode }: Props) {
           )}
 
           <Button type="submit" size="lg" className="w-full rounded-full glow-orange" disabled={submitting}>
-            {submitting ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Submitting...</> : <><Upload className="mr-2 h-4 w-4" /> Submit payment</>}
+            {submitting ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Preparing &amp; sending...</> : <><Upload className="mr-2 h-4 w-4" /> Submit payment</>}
           </Button>
         </form>
       </div>
