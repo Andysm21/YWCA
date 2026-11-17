@@ -24,6 +24,7 @@ import { validateCampInput } from '@/lib/validation/camp';
 import { cn, slugify } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { ContentTab } from '@/components/portal/content-management';
@@ -452,6 +453,8 @@ function CampForm({
   onSaved: () => void;
 }) {
   const [form, setForm] = React.useState<CampFormState>(initial ?? emptyCampForm);
+  // Birth-date limit switch: ON = the registration calendar is restricted to [earliest, latest]; OFF = every date is allowed.
+  const [dobLimitOn, setDobLimitOn] = React.useState(!!(initial?.dob_min || initial?.dob_max));
   const [slugTouched, setSlugTouched] = React.useState(!!initial);
   const [errors, setErrors] = React.useState<string[]>([]);
   const [submitting, setSubmitting] = React.useState(false);
@@ -495,7 +498,11 @@ function CampForm({
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    const validationErrors = validateCampInput(form);
+    const payload = dobLimitOn ? form : { ...form, dob_min: '', dob_max: '' };
+    const validationErrors = validateCampInput(payload);
+    if (dobLimitOn && !form.dob_min && !form.dob_max) {
+      validationErrors.push('The birth-date limit is on: set the earliest and/or latest birth date, or turn the limit off.');
+    }
     if (validationErrors.length > 0) {
       setErrors(validationErrors);
       return;
@@ -506,7 +513,7 @@ function CampForm({
       const res = await fetch(initial ? `/api/portal/camps/${initial.id}` : '/api/portal/camps', {
         method: initial ? 'PATCH' : 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(form),
+        body: JSON.stringify(payload),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || 'Failed to save camp');
@@ -596,14 +603,30 @@ function CampForm({
         <div className="space-y-2"><Label>Max age</Label><Input type="number" value={form.age_max} onChange={(e) => set('age_max', e.target.value)} className="rounded-xl bg-background/50" /></div>
         <div className="space-y-2"><Label>Capacity</Label><Input type="number" value={form.capacity} onChange={(e) => set('capacity', e.target.value)} className="rounded-xl bg-background/50" /></div>
         <div className="space-y-2"><Label>Price (EGP)</Label><Input type="number" value={form.price_egp} onChange={(e) => set('price_egp', e.target.value)} className="rounded-xl bg-background/50" /></div>
-        <div className="space-y-2"><Label>Earliest birth date (min)</Label><Input type="date" value={form.dob_min} onChange={(e) => set('dob_min', e.target.value)} className="rounded-xl bg-background/50" /></div>
-        <div className="space-y-2"><Label>Latest birth date (max)</Label><Input type="date" value={form.dob_max} onChange={(e) => set('dob_max', e.target.value)} className="rounded-xl bg-background/50" /></div>
-        <div className="flex flex-col justify-end space-y-2">
-          <Button type="button" variant="outline" size="sm" className="rounded-full border-border/60 bg-transparent" onClick={suggestDobRange}>Suggest from ages</Button>
+        <div className="space-y-3 rounded-2xl border border-border/60 bg-background/30 p-4 sm:col-span-2 lg:col-span-3">
+          <div className="flex items-start justify-between gap-4">
+            <div>
+              <Label className="text-base">Birth-date limit on the registration form</Label>
+              <p className="mt-1 text-xs text-muted-foreground">
+                <strong>On:</strong> dates before the earliest and after the latest birth date are disabled in the calendar. <strong>Off:</strong> the whole calendar is enabled.
+              </p>
+            </div>
+            <div className="flex shrink-0 items-center gap-2">
+              <span className="text-xs font-semibold text-muted-foreground">{dobLimitOn ? 'On' : 'Off'}</span>
+              <Switch checked={dobLimitOn} onCheckedChange={setDobLimitOn} aria-label="Birth-date limit" />
+            </div>
+          </div>
+          {dobLimitOn && (
+            <div className="grid gap-4 sm:grid-cols-3">
+              <div className="space-y-2"><Label>Earliest birth date (min)</Label><Input type="date" value={form.dob_min} onChange={(e) => set('dob_min', e.target.value)} className="rounded-xl bg-background/50" /></div>
+              <div className="space-y-2"><Label>Latest birth date (max)</Label><Input type="date" value={form.dob_max} onChange={(e) => set('dob_max', e.target.value)} className="rounded-xl bg-background/50" /></div>
+              <div className="flex flex-col justify-end space-y-2">
+                <Button type="button" variant="outline" size="sm" className="rounded-full border-border/60 bg-transparent" onClick={suggestDobRange}>Suggest from ages</Button>
+              </div>
+              <p className="text-xs text-muted-foreground sm:col-span-3">Suggest from ages fills both dates from the Min and Max age (counted at the camp start date, or today if no start date is set).</p>
+            </div>
+          )}
         </div>
-        <p className="text-xs text-muted-foreground sm:col-span-2 lg:col-span-3">
-          Optional. On the registration form, birth dates before the earliest or after the latest date are disabled. Suggest from ages fills both from the Min and Max age (counted at the camp start date, or today if no start date is set). Leave empty for no limit.
-        </p>
         <div className="space-y-3 rounded-2xl border border-border/60 bg-background/30 p-4 sm:col-span-2 lg:col-span-3">
           <div>
             <Label className="text-base">Visibility &amp; registration</Label>
