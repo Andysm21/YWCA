@@ -13,7 +13,8 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { formatDate, formatDateRange } from '@/lib/camp-data';
 import { cn } from '@/lib/utils';
-import { BUS_PICKUP_OPTIONS, gradeOptionsForCamp, tshirtSizesForCamp } from '@/lib/validation/registration';
+import { BUS_PICKUP_OPTIONS, gradeOptionsForCamp, tshirtSizesForCamp, isValidEmail } from '@/lib/validation/registration';
+import { emailKindFor } from '@/lib/registration-email-kind';
 import type { RegistrationDocument, RegistrationRow } from '@/lib/queries/registrations';
 
 type Camp = { id: string; slug: string; name: string; price: number; dateStart: string; dateEnd: string; season: string } | null;
@@ -99,6 +100,95 @@ function DocumentCard({ registrationId, doc }: { registrationId: string; doc: Re
         )}
       </div>
     </div>
+  );
+}
+
+/** Send the email that matches this registration's status, to the guardian or to another address. */
+function SendEmailCard({ r, onConfirm }: { r: Record<string, any>; onConfirm: (s: NonNullable<ConfirmState>) => void }) {
+  const router = useRouter();
+  const spec = emailKindFor(r.status, r.promoted_from_waitlist_at);
+  const [recipient, setRecipient] = React.useState<'guardian' | 'other'>('guardian');
+  const [other, setOther] = React.useState('');
+  const [busy, setBusy] = React.useState(false);
+  const [error, setError] = React.useState<string | null>(null);
+  const [note, setNote] = React.useState<string | null>(null);
+
+  const target = recipient === 'guardian' ? String(r.parent_email ?? '') : other.trim();
+  const valid = isValidEmail(target);
+
+  async function send() {
+    setBusy(true);
+    setError(null);
+    setNote(null);
+    try {
+      const res = await fetch(`/api/portal/registrations/${r.id}/resend-email`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(recipient === 'other' ? { to: other.trim() } : {}),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data.error || 'Could not send the email');
+      setNote(`${data.label ?? 'Email'} sent to ${data.to}.`);
+      router.refresh();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Could not send the email');
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <section className="rounded-2xl border border-border/60 bg-card/50 p-5 sm:p-6">
+      <h2 className="flex items-center gap-2.5 font-display text-lg font-bold text-foreground">
+        <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary/10 text-primary"><Mail className="h-4 w-4" /></span>
+        Send an email
+      </h2>
+      {!spec ? (
+        <p className="mt-3 text-sm text-muted-foreground">
+          There is no email for a <strong>{String(r.status).replace('_', ' ')}</strong> registration. Emails exist for pending payment, promoted from the waitlist, confirmed, and waitlisted registrations.
+        </p>
+      ) : (
+        <div className="mt-3 space-y-4">
+          <div className="rounded-xl border border-primary/30 bg-primary/5 p-3 text-sm">
+            <p className="font-semibold text-foreground">Will send: {spec.label}</p>
+            <p className="mt-0.5 text-xs text-muted-foreground">{spec.description} The email always matches the registration&apos;s current status ({String(r.status).replace('_', ' ')}{r.promoted_from_waitlist_at && r.status === 'pending_payment' ? ', promoted from the waitlist' : ''}).</p>
+          </div>
+
+          <fieldset className="space-y-2">
+            <legend className="mb-1 text-sm font-semibold text-foreground">Send to</legend>
+            <label className={cn('flex cursor-pointer items-start gap-3 rounded-xl border p-3 transition-colors', recipient === 'guardian' ? 'border-primary bg-primary/10' : 'border-border/60 hover:bg-muted/40')}>
+              <input type="radio" name="email-recipient" checked={recipient === 'guardian'} onChange={() => setRecipient('guardian')} className="mt-1 accent-[hsl(var(--primary))]" />
+              <span className="min-w-0"><span className="block text-sm font-semibold text-foreground">The guardian</span><span className="block break-all text-xs text-muted-foreground">{r.parent_email}</span></span>
+            </label>
+            <label className={cn('flex cursor-pointer items-start gap-3 rounded-xl border p-3 transition-colors', recipient === 'other' ? 'border-primary bg-primary/10' : 'border-border/60 hover:bg-muted/40')}>
+              <input type="radio" name="email-recipient" checked={recipient === 'other'} onChange={() => setRecipient('other')} className="mt-1 accent-[hsl(var(--primary))]" />
+              <span className="min-w-0 flex-1">
+                <span className="block text-sm font-semibold text-foreground">Another email address</span>
+                {recipient === 'other' && (
+                  <Input type="email" inputMode="email" autoFocus placeholder="name@example.com" value={other} onChange={(e) => setOther(e.target.value)} className="mt-2 rounded-xl bg-background/50" />
+                )}
+              </span>
+            </label>
+          </fieldset>
+
+          {error && <p className="rounded-lg border border-rose-500/20 bg-rose-500/10 px-3 py-2 text-sm text-rose-500">{error}</p>}
+          {note && <p className="flex items-center gap-1.5 text-sm text-emerald-500"><Check className="h-4 w-4" /> {note}</p>}
+
+          <Button
+            className="rounded-full glow-orange"
+            disabled={busy || !valid}
+            onClick={() => onConfirm({
+              title: `Send the ${spec.label.replace(/"/g, '')}?`,
+              description: `It will be sent to ${target}${recipient === 'other' ? ' (not the guardian)' : ' (the guardian)'}. ${spec.description}`,
+              onConfirm: () => { send(); },
+            })}
+          >
+            {busy ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Mail className="mr-2 h-4 w-4" />} Send email
+          </Button>
+          {recipient === 'other' && other.trim() !== '' && !valid && <p className="text-xs text-rose-500">Enter a valid email address.</p>}
+        </div>
+      )}
+    </section>
   );
 }
 
@@ -428,6 +518,7 @@ export function RegistrationDetailContent({
       </div>
 
       <div className="mt-5 space-y-5">
+        <SendEmailCard r={r} onConfirm={setConfirmState} />
         <EditRegistrationCard r={r} campName={camp?.name ?? ''} />
         {isSuperAdmin && <DeleteRegistrationCard r={r} campId={camp?.id ?? null} onConfirm={setConfirmState} />}
       </div>
