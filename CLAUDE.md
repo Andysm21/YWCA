@@ -59,8 +59,8 @@ generated in Bolt.new from a v0-style prompt. No backend/DB yet.
 - Season: year (e.g. 2026), type (Summer/Winter), status (open/closed)
 - Camp: belongs to a Season — name, date range, age range, capacity, price,
   description, cover photo
-  - Winter camps: Kids Camp, Teens Camp
-  - Summer camps: Kids 1, Kids 2, Kids 3, Kids 4, Girls, Uni, Boys, Leadership
+  - Winter camps: Kids Camp, Teens Camp (plus Uni and Leadership)
+  - Summer camps: Kids 1, Kids 2, Kids 3, Kids 4, Girls, Boys (Uni and Leadership run in summer or winter)
 - Registration: belongs to a Camp — camper info, guardian info, payment status,
   2-step submission flow
 - User: role (guest/admin/super_admin)
