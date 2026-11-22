@@ -34,8 +34,8 @@ const STATUS_CONTENT: Record<RegistrationStatus, { icon: typeof CheckCircle2; ic
   waitlisted: {
     icon: ListOrdered,
     iconClass: 'bg-rose-500/15 text-rose-400',
-    title: "You're on the waitlist",
-    message: (p) => `${p.campName} is currently full. We'll email you if a spot opens up. No payment is needed right now.`,
+    title: "You're on the waitlist: please don't pay",
+    message: (p) => `${p.campName} is full, so this registration is on the waiting list and cannot be paid for now. Please do NOT make any payment. If a spot opens up, we'll email you a payment link, in order of registration time.`,
   },
   refunded: {
     icon: XCircle,

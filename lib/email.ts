@@ -391,6 +391,8 @@ type WaitlistEmailParams = {
   registrationNumber: string;
   campName: string;
   waitlistPosition: number;
+  /** True when the guardian had already paid/uploaded proof by the time the camp turned out to be full. */
+  paymentProofReceived?: boolean;
 };
 
 export async function sendWaitlistEmail(params: WaitlistEmailParams): Promise<SendResult> {
@@ -400,7 +402,9 @@ export async function sendWaitlistEmail(params: WaitlistEmailParams): Promise<Se
 <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background-color:#EAF2FF; border:2px solid #5B8DEF; border-radius:14px;">
 <tr><td style="padding:16px 18px;">
 <p style="margin:0 0 4px; font-size:12px; font-weight:800; letter-spacing:0.1em; color:#1F4FB3;">Status: on the waitlist</p>
-<p style="margin:0; font-size:15px; line-height:1.55; color:#0F2A5C;"><strong>${escapeHtml(params.campName)} is full right now.</strong> We have added ${escapeHtml(params.camperName)} to the waitlist. <strong>No payment is needed &mdash; please do not pay yet.</strong></p>
+<p style="margin:0; font-size:15px; line-height:1.55; color:#0F2A5C;">${params.paymentProofReceived
+  ? `<strong>${escapeHtml(params.campName)} filled up before your payment could be confirmed.</strong> We received your documents and payment proof, but your spot is <strong>not secured</strong> and ${escapeHtml(params.camperName)} is on the waitlist. Our team will contact you about your payment: a refund, or keeping it for a spot that opens up.`
+  : `<strong>${escapeHtml(params.campName)} is full right now.</strong> We have added ${escapeHtml(params.camperName)} to the waitlist. <strong>No payment is needed &mdash; please do not pay yet.</strong>`}</p>
 </td></tr>
 </table>
 
@@ -429,7 +433,7 @@ ${detailRowHtml('Camper', escapeHtml(params.camperName))}
     pill: 'Waitlist',
     pillColor: '#9DBBF5',
     title: `You&rsquo;re on the waitlist, ${escapeHtml(firstName)}!`,
-    subtitle: `${escapeHtml(params.campName)} is full right now. No payment needed.`,
+    subtitle: params.paymentProofReceived ? `${escapeHtml(params.campName)} filled up. We will contact you about your payment.` : `${escapeHtml(params.campName)} is full right now. No payment needed.`,
     contentHtml,
   });
 
@@ -442,7 +446,7 @@ ${detailRowHtml('Camper', escapeHtml(params.camperName))}
 
 Hi ${params.camperName},
 
-${params.campName} is full right now. We have added ${params.camperName} to the waitlist. Please do NOT pay yet.
+${params.paymentProofReceived ? `${params.campName} filled up before your payment could be confirmed. We received your documents and payment proof, but your spot is NOT secured and ${params.camperName} is on the waitlist. Our team will contact you about your payment (a refund, or keeping it for a spot that opens up).` : `${params.campName} is full right now. We have added ${params.camperName} to the waitlist. Please do NOT pay yet.`}
 
 If a spot opens up, our team will email you a payment link right away. Until you receive that email, there is nothing you need to do.
 

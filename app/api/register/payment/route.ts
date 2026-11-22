@@ -5,6 +5,7 @@ import { sendWaitlistEmail } from '@/lib/email';
 import { recordEmailResult } from '@/lib/registration-email';
 import { isRateLimited } from '@/lib/rate-limit';
 import { getHeldSpots } from '@/lib/queries/held-spots';
+import { moveToWaitlist } from '@/lib/waitlist';
 
 const MAX_FILE_BYTES = 10 * 1024 * 1024;
 const ALLOWED_MIME_PREFIX = 'image/';
@@ -88,7 +89,7 @@ export async function POST(request: Request) {
 
     const { data: registration, error: regError } = await supabase
       .from('registrations')
-      .select('id, status, camp_id, camper_name, parent_email, camps(capacity, camp_types(name), seasons(year, type))')
+      .select('id, status, camp_id, camper_name, parent_email, promoted_from_waitlist_at, camps(capacity, camp_types(name), seasons(year, type))')
       .eq('registration_number', registrationNumber)
       .maybeSingle();
     if (regError) return NextResponse.json({ error: regError.message }, { status: 500 });
@@ -122,51 +123,9 @@ export async function POST(request: Request) {
     // registrations may have gone payment_submitted/confirmed, or a
     // waitlist promotion may have happened, and filled the camp. Never
     // trust that a spot reserved at Step 1 is still available at Step 2.
-    // Held spots, not counting this registration's own hold (a promoted registrant keeps their spot while paying).
-    const filledCount = await getHeldSpots(registration.camp_id, registration.id);
-
-    if (filledCount >= camp.capacity) {
-      // Camp filled up since Step 1 — move to waitlist instead of accepting
-      // documents for a spot that no longer exists. Files are NOT uploaded;
-      // nothing to do with them for a waitlisted registration.
-      const { count: waitlistCount, error: waitlistCountError } = await supabase
-        .from('registrations')
-        .select('id', { count: 'exact', head: true })
-        .eq('camp_id', registration.camp_id)
-        .eq('status', 'waitlisted');
-      if (waitlistCountError) return NextResponse.json({ error: waitlistCountError.message }, { status: 500 });
-
-      const newWaitlistPosition = (waitlistCount ?? 0) + 1;
-      const { error: waitlistUpdateError } = await supabase
-        .from('registrations')
-        .update({ status: 'waitlisted', waitlist_position: newWaitlistPosition })
-        .eq('id', registration.id);
-      if (waitlistUpdateError) return NextResponse.json({ error: waitlistUpdateError.message }, { status: 500 });
-
-      // This registrant needs the same waitlist email Step 1 sends when the
-      // camp is already full at initial registration — this branch is the
-      // "filled up WHILE they were on Step 2" case, so without this they'd
-      // silently drop off the waitlist notification path entirely (bug
-      // fixed 2026 waitlist audit: this send was previously missing here).
-      try {
-        const result = await sendWaitlistEmail({
-          to: registration.parent_email,
-          camperName: registration.camper_name,
-          registrationNumber,
-          campName,
-          waitlistPosition: newWaitlistPosition,
-        });
-        await recordEmailResult(supabase, registration.id, result);
-      } catch (emailError) {
-        console.error('[register/payment] waitlist email failed', emailError);
-        await recordEmailResult(supabase, registration.id, { status: 'failed', reason: emailError instanceof Error ? emailError.message : 'Unknown error', failureType: 'other' });
-      }
-
-      return NextResponse.json(
-        { waitlisted: true, message: `${campName} filled up while your payment was pending. You've been moved to the waitlist — we'll email you if a spot opens up.` },
-        { status: 200 }
-      );
-    }
+    // Held spots (confirmed + awaiting confirmation + promoted still paying), not counting this registration's own hold.
+    // A promoted registrant already holds a spot, so they are never treated as "full".
+    const campFull = !registration.promoted_from_waitlist_at && (await getHeldSpots(registration.camp_id, registration.id)) >= camp.capacity;
 
     const { certificatesFolderId, paymentsFolderId } = await getOrCreateCampFolders(seasonName, campName);
 
@@ -197,6 +156,35 @@ export async function POST(request: Request) {
       },
     ]);
     if (docsError) return NextResponse.json({ error: `Files uploaded but failed to save: ${docsError.message}` }, { status: 500 });
+
+    if (campFull) {
+      // The camp filled up before this payment was submitted (they may already have paid by bank transfer).
+      // Keep their documents so staff can see the proof, but they do NOT take a spot: waitlist, ordered by registration time.
+      const position = await moveToWaitlist(supabase, registration.id, registration.camp_id);
+      if (position !== null) {
+        try {
+          const result = await sendWaitlistEmail({
+            to: registration.parent_email,
+            camperName: registration.camper_name,
+            registrationNumber,
+            campName,
+            waitlistPosition: position,
+            paymentProofReceived: true,
+          });
+          await recordEmailResult(supabase, registration.id, result);
+        } catch (emailError) {
+          console.error('[register/payment] waitlist email failed', emailError);
+          await recordEmailResult(supabase, registration.id, { status: 'failed', reason: emailError instanceof Error ? emailError.message : 'Unknown error', failureType: 'other' });
+        }
+      }
+      return NextResponse.json(
+        {
+          waitlisted: true,
+          message: `${campName} filled up before your payment was submitted, so your spot could not be secured and you are on the waiting list. We saved your documents and payment proof, and our team will contact you about your payment (refund, or keeping it for a spot that opens up).`,
+        },
+        { status: 200 }
+      );
+    }
 
     // Conditional on status still being pending_payment — closes the TOCTOU
     // gap between the status check above and this write (two tabs / a

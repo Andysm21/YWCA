@@ -6,6 +6,7 @@ import { RegistrationStatusView } from '@/components/sections/registration-statu
 import { getCampBySlug } from '@/lib/queries/camps';
 import { getBankDetails } from '@/lib/queries/site-settings';
 import { getRegistrationStatusByCode } from '@/lib/queries/guest-registration';
+import { autoWaitlistIfFull } from '@/lib/waitlist';
 
 export const revalidate = 0;
 
@@ -41,7 +42,12 @@ export default async function PaymentPage({
   const ip = headers().get('x-forwarded-for')?.split(',')[0]?.trim() ?? 'unknown';
   const lookupAllowed = !isRateLimited(`payment-page-code:${ip}`, 15, 10 * 60 * 1000);
   if (code && lookupAllowed) {
-    const registration = await getRegistrationStatusByCode(params.campSlug, code);
+    let registration = await getRegistrationStatusByCode(params.campSlug, code);
+    // Camp already full (confirmed + payments awaiting confirmation)? Then this registration becomes a
+    // waitlist registration right now, so nobody pays for a spot that no longer exists.
+    if (registration?.status === 'pending_payment' && (await autoWaitlistIfFull(code, params.campSlug))) {
+      registration = await getRegistrationStatusByCode(params.campSlug, code);
+    }
     if (registration && registration.status !== 'pending_payment') {
       return (
         <RegistrationStatusView
