@@ -2,24 +2,29 @@ import { notFound } from 'next/navigation';
 import { CampDetailContent } from '@/components/portal/camp-detail-content';
 import { getCampAnalytics } from '@/lib/queries/analytics';
 import { getAllCampsForPortal } from '@/lib/queries/camps';
+import { syncFullCampWaitlist } from '@/lib/waitlist';
 import { getRegistrationsPage, getCampInsights, type RegistrationStatus } from '@/lib/queries/registrations';
 
 export const metadata = { title: 'Camp — YWCA Camp Portal' };
 export const dynamic = 'force-dynamic';
 
 const PAGE_SIZE = 20;
-const STATUSES = ['pending_payment', 'payment_submitted', 'confirmed', 'waitlisted', 'refunded'];
+const STATUSES = ['attending', 'pending_payment', 'payment_submitted', 'confirmed', 'waitlisted', 'refunded'];
 
 export default async function CampPage({
   params,
   searchParams,
 }: {
   params: { campId: string };
-  searchParams: { page?: string; status?: string; q?: string };
+  searchParams: { page?: string; status?: string; q?: string; scope?: string };
 }) {
   const page = Math.max(1, parseInt(searchParams.page ?? '1', 10) || 1);
-  const status = STATUSES.includes(searchParams.status ?? '') ? (searchParams.status as RegistrationStatus) : undefined;
+  const status = STATUSES.includes(searchParams.status ?? '') ? (searchParams.status as RegistrationStatus | 'attending') : undefined;
+  const scope: 'all' | 'attending' = searchParams.scope === 'attending' ? 'attending' : 'all';
   const search = searchParams.q?.trim() || undefined;
+
+  // Camp full? Any registration still pending payment becomes waitlist (first registered = #1).
+  await syncFullCampWaitlist(params.campId);
 
   const [camps, analytics] = await Promise.all([getAllCampsForPortal(), getCampAnalytics(params.campId)]);
   const camp = camps.find((c) => c.id === params.campId);
@@ -27,7 +32,7 @@ export default async function CampPage({
 
   const [{ rows, count }, insights] = await Promise.all([
     getRegistrationsPage({ campId: params.campId, status, search, page, pageSize: PAGE_SIZE }),
-    getCampInsights(params.campId),
+    getCampInsights(params.campId, scope),
   ]);
 
   return (
@@ -41,6 +46,7 @@ export default async function CampPage({
       pageSize={PAGE_SIZE}
       statusFilter={status ?? 'all'}
       search={search ?? ''}
+      scope={scope}
     />
   );
 }

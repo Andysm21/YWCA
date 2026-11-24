@@ -88,3 +88,57 @@ export async function autoWaitlistIfFull(registrationNumber: string, campSlug: s
   }
   return true;
 }
+
+/**
+ * When a camp is full (confirmed + awaiting confirmation + promoted still paying >= capacity),
+ * every plain pending-payment registration that hasn't paid becomes a waitlist registration,
+ * in registration-time order (first to register = waitlist #1), and gets the waitlist email.
+ * Safe to call repeatedly: it only touches pending-payment, non-promoted registrations.
+ * Returns how many were moved.
+ */
+export async function syncFullCampWaitlist(campId: string): Promise<number> {
+  try {
+    const supabase = createServiceClient();
+    const { data: camp } = await supabase
+      .from('camps')
+      .select('capacity, camp_types(name)')
+      .eq('id', campId)
+      .maybeSingle();
+    if (!camp || !(camp.capacity > 0)) return 0;
+    if ((await getHeldSpots(campId)) < camp.capacity) return 0;
+
+    const { data: pending } = await supabase
+      .from('registrations')
+      .select('id, camper_name, parent_email, registration_number')
+      .eq('camp_id', campId)
+      .eq('status', 'pending_payment')
+      .is('promoted_from_waitlist_at', null)
+      .order('created_at', { ascending: true });
+    if (!pending || pending.length === 0) return 0;
+
+    const typeRel = (camp as any).camp_types;
+    const campName = (Array.isArray(typeRel) ? typeRel[0]?.name : typeRel?.name) ?? 'the camp';
+    let moved = 0;
+    for (const reg of pending) {
+      const position = await moveToWaitlist(supabase, reg.id, campId);
+      if (position === null) continue;
+      moved += 1;
+      try {
+        const result = await sendWaitlistEmail({
+          to: reg.parent_email,
+          camperName: reg.camper_name,
+          registrationNumber: reg.registration_number,
+          campName,
+          waitlistPosition: position,
+        });
+        await recordEmailResult(supabase, reg.id, result);
+      } catch (err) {
+        console.error('[syncFullCampWaitlist] email failed', err);
+      }
+    }
+    return moved;
+  } catch (err) {
+    console.error('[syncFullCampWaitlist]', err);
+    return 0;
+  }
+}

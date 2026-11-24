@@ -48,7 +48,8 @@ export async function GET(request: Request) {
         .order('created_at', { ascending: true })
         .range(from, from + 999);
       if (campId && campId !== 'all') query = query.eq('camp_id', campId);
-      if (status && status !== 'all') query = query.eq('status', status);
+      if (status === 'attending') query = query.in('status', ['confirmed', 'payment_submitted']);
+      else if (status && status !== 'all') query = query.eq('status', status);
       if (q) {
         const like = `%${q}%`;
         query = query.or(['camper_name', 'parent_name', 'email', 'parent_email', 'mobile_phone', 'parent_mobile', 'registration_number', 'school'].map((c) => `${c}.ilike.${like}`).join(','));
@@ -230,15 +231,67 @@ export async function GET(request: Request) {
       cell.alignment = { vertical: 'middle', horizontal: 'center', wrapText: true };
     });
 
+    // ---- Sheet 3 (single camp): analytics for everyone vs. the people actually attending ----
+    if (campId && campId !== 'all') {
+      const { data: all } = await supabase
+        .from('registrations')
+        .select('status, academic_year, tshirt_size, bus_pickup, first_time_camper, medical_condition, camps(price_egp, capacity)')
+        .eq('camp_id', campId);
+      const list = (all ?? []) as any[];
+      const campRel = list[0] ? (Array.isArray(list[0].camps) ? list[0].camps[0] : list[0].camps) : null;
+      const price = campRel?.price_egp ?? 0;
+      const groups: { label: string; rows: any[] }[] = [
+        { label: 'All registrations (excl. refunded)', rows: list.filter((r) => r.status !== 'refunded') },
+        { label: 'Attending (confirmed + payment submitted)', rows: list.filter((r) => r.status === 'confirmed' || r.status === 'payment_submitted') },
+      ];
+      const an = wb.addWorksheet('Analytics');
+      an.columns = [
+        { header: 'Metric', key: 'm', width: 34 },
+        { header: groups[0].label, key: 'a', width: 34 },
+        { header: groups[1].label, key: 'b', width: 40 },
+      ];
+      const tally = (rs: any[], pick: (r: any) => unknown) => {
+        const m = new Map<string, number>();
+        for (const r of rs) { const k = String(pick(r) ?? '').trim() || '—'; m.set(k, (m.get(k) ?? 0) + 1); }
+        return m;
+      };
+      const section = (title: string) => { const row = an.addRow({ m: title }); row.font = { bold: true }; row.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFFDE7D9' } }; };
+      const line = (metric: string, a: unknown, b: unknown) => an.addRow({ m: metric, a, b });
+      section('Totals');
+      line('Registrations', groups[0].rows.length, groups[1].rows.length);
+      for (const st of ['confirmed', 'payment_submitted', 'pending_payment', 'waitlisted']) {
+        line(STATUS_LABEL[st], groups[0].rows.filter((r) => r.status === st).length, groups[1].rows.filter((r) => r.status === st).length);
+      }
+      line('Capacity', campRel?.capacity ?? '', campRel?.capacity ?? '');
+      line('Confirmed revenue (EGP)', groups[0].rows.filter((r) => r.status === 'confirmed').length * price, groups[1].rows.filter((r) => r.status === 'confirmed').length * price);
+      line('Awaiting confirmation (EGP)', groups[0].rows.filter((r) => r.status === 'payment_submitted').length * price, groups[1].rows.filter((r) => r.status === 'payment_submitted').length * price);
+      line('First-time campers', groups[0].rows.filter((r) => r.first_time_camper).length, groups[1].rows.filter((r) => r.first_time_camper).length);
+      line('Campers with medical notes', groups[0].rows.filter((r) => (r.medical_condition ?? '').trim()).length, groups[1].rows.filter((r) => (r.medical_condition ?? '').trim()).length);
+      const breakdowns: [string, (r: any) => unknown][] = [['By grade', (r) => r.academic_year], ['T-shirt sizes', (r) => r.tshirt_size], ['Bus pickup', (r) => r.bus_pickup]];
+      for (const [title, pick] of breakdowns) {
+        section(title);
+        const ta = tally(groups[0].rows, pick), tb = tally(groups[1].rows, pick);
+        for (const k of Array.from(new Set([...Array.from(ta.keys()), ...Array.from(tb.keys())])).sort()) line(k, ta.get(k) ?? 0, tb.get(k) ?? 0);
+      }
+      an.getRow(1).eachCell((cell) => {
+        cell.font = { bold: true, color: { argb: 'FFFFFFFF' } };
+        cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFE8531E' } };
+        cell.alignment = { vertical: 'middle', horizontal: 'center', wrapText: true };
+      });
+      an.getColumn('a').numFmt = '#,##0';
+      an.getColumn('b').numFmt = '#,##0';
+    }
+
     const buffer = await wb.xlsx.writeBuffer();
     const campLabel = rows[0] && campId && campId !== 'all'
       ? String((Array.isArray(rows[0].camps?.camp_types) ? rows[0].camps.camp_types[0]?.name : rows[0].camps?.camp_types?.name) ?? 'camp').replace(/[^a-z0-9]+/gi, '-')
       : 'all-camps';
+    const scopeTag = status === 'attending' ? '-attending' : '';
     const stamp = new Date().toISOString().slice(0, 10);
     return new Response(buffer as ArrayBuffer, {
       headers: {
         'Content-Type': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-        'Content-Disposition': `attachment; filename="YWCA-Registrations-${campLabel}-${stamp}.xlsx"`,
+        'Content-Disposition': `attachment; filename="YWCA-Registrations-${campLabel}${scopeTag}-${stamp}.xlsx"`,
         'Cache-Control': 'private, no-store',
       },
     });

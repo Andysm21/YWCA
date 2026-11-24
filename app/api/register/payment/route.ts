@@ -5,7 +5,7 @@ import { sendWaitlistEmail } from '@/lib/email';
 import { recordEmailResult } from '@/lib/registration-email';
 import { isRateLimited } from '@/lib/rate-limit';
 import { getHeldSpots } from '@/lib/queries/held-spots';
-import { moveToWaitlist } from '@/lib/waitlist';
+import { moveToWaitlist, syncFullCampWaitlist } from '@/lib/waitlist';
 
 const MAX_FILE_BYTES = 10 * 1024 * 1024;
 const ALLOWED_MIME_PREFIX = 'image/';
@@ -207,6 +207,9 @@ export async function POST(request: Request) {
         { status: 409 }
       );
     }
+
+    // This payment may have just filled the camp: everyone still pending becomes waitlist (by registration time).
+    await syncFullCampWaitlist(registration.camp_id);
 
     return NextResponse.json({ success: true });
   } catch (err) {

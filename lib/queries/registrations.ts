@@ -43,7 +43,8 @@ function flattenCampTypeName(campsRel: any): { name: string; price_egp: number; 
 
 export type RegistrationFilters = {
   campId?: string;
-  status?: RegistrationStatus;
+  /** 'attending' = confirmed + payment submitted (the people who will actually go). */
+  status?: RegistrationStatus | 'attending';
   /** Free-text match on camper/guardian name, emails, phone, registration number. */
   search?: string;
   page?: number;
@@ -71,7 +72,8 @@ export async function getRegistrationsPage({ campId, status, search, page = 1, p
     : query.order('created_at', { ascending: true }); // first to register is first: fair order
 
   if (campId) query = query.eq('camp_id', campId);
-  if (status) query = query.eq('status', status);
+  if (status === 'attending') query = query.in('status', ['confirmed', 'payment_submitted']);
+  else if (status) query = query.eq('status', status);
   const term = search?.trim().replace(/[%,()*]/g, ' ');
   if (term) {
     const like = `%${term}%`;
@@ -230,7 +232,7 @@ export type CampInsights = {
 };
 
 /** Lean per-camp breakdowns (active registrations only: everything except refunded) for the camp page charts. */
-export async function getCampInsights(campId: string): Promise<CampInsights> {
+export async function getCampInsights(campId: string, scope: 'all' | 'attending' = 'all'): Promise<CampInsights> {
   const cookieStore = await cookies();
   const supabase = createServerClient(cookieStore);
   const withBus = await newColumnsReady();
@@ -238,7 +240,7 @@ export async function getCampInsights(campId: string): Promise<CampInsights> {
     .from('registrations')
     .select(`id, status, academic_year, tshirt_size, first_time_camper, medical_condition${withBus ? ', bus_pickup' : ''}`)
     .eq('camp_id', campId)
-    .neq('status', 'refunded');
+    .in('status', scope === 'attending' ? ['confirmed', 'payment_submitted'] : ['pending_payment', 'waitlisted', 'payment_submitted', 'confirmed']);
   if (error) throw error;
   const rows = (data ?? []) as any[];
 

@@ -16,7 +16,7 @@ import type { CampAnalytics } from '@/lib/queries/analytics';
 import type { CampInsights, RegistrationRow } from '@/lib/queries/registrations';
 import { cn } from '@/lib/utils';
 
-const STATUS_ORDER = ['pending_payment', 'payment_submitted', 'confirmed', 'waitlisted', 'refunded'] as const;
+const STATUS_ORDER = ['attending', 'pending_payment', 'payment_submitted', 'confirmed', 'waitlisted', 'refunded'] as const;
 
 function Breakdown({ title, items }: { title: string; items: [string, number][] }) {
   const max = Math.max(1, ...items.map(([, n]) => n));
@@ -45,7 +45,7 @@ function Breakdown({ title, items }: { title: string; items: [string, number][] 
 }
 
 export function CampDetailContent({
-  camp, analytics, insights, registrations, totalCount, page, pageSize, statusFilter, search,
+  camp, analytics, insights, registrations, totalCount, page, pageSize, statusFilter, search, scope,
 }: {
   camp: Camp;
   analytics: CampAnalytics;
@@ -56,6 +56,7 @@ export function CampDetailContent({
   pageSize: number;
   statusFilter: string;
   search: string;
+  scope: 'all' | 'attending';
 }) {
   const router = useRouter();
   const [q, setQ] = React.useState(search);
@@ -65,6 +66,7 @@ export function CampDetailContent({
 
   function go(next: { status?: string; q?: string; page?: number }) {
     const params = new URLSearchParams();
+    if (scope === 'attending') params.set('scope', 'attending');
     const st = next.status ?? statusFilter;
     const qq = next.q ?? search;
     if (st && st !== 'all') params.set('status', st);
@@ -73,11 +75,20 @@ export function CampDetailContent({
     startTransition(() => router.push(`${base}${params.toString() ? `?${params}` : ''}`));
   }
 
-  const exportParams = new URLSearchParams({ camp: camp.id });
-  if (statusFilter !== 'all') exportParams.set('status', statusFilter);
-  if (search) exportParams.set('q', search);
-
-  const activeTotal = Object.entries(analytics.statusCounts).reduce((s, [k, n]) => (k === 'refunded' ? s : s + (n ?? 0)), 0);
+  const exportHref = (status: string) => {
+    const p = new URLSearchParams({ camp: camp.id });
+    if (status !== 'all') p.set('status', status);
+    if (search) p.set('q', search);
+    return `/api/portal/registrations/export?${p}`;
+  };
+  const attendingOnly = scope === 'attending';
+  const counts = analytics.statusCounts;
+  const attendingTotal = (counts.confirmed ?? 0) + (counts.payment_submitted ?? 0);
+  const activeTotal = attendingOnly
+    ? attendingTotal
+    : Object.entries(counts).reduce((s, [k, n]) => (k === 'refunded' ? s : s + (n ?? 0)), 0);
+  const shownCounts = attendingOnly ? { confirmed: counts.confirmed, payment_submitted: counts.payment_submitted } : counts;
+  const scopeHref = (sc: 'all' | 'attending') => `${base}${sc === 'attending' ? '?scope=attending' : ''}`;
 
   return (
     <div>
@@ -99,8 +110,13 @@ export function CampDetailContent({
         </div>
         <div className="flex flex-wrap gap-2">
           <Button asChild className="rounded-full glow-orange">
-            <a href={`/api/portal/registrations/export?${exportParams}`} download>
-              <Download className="mr-2 h-4 w-4" /> Export Excel
+            <a href={exportHref('all')} download>
+              <Download className="mr-2 h-4 w-4" /> Export everyone
+            </a>
+          </Button>
+          <Button asChild variant="outline" className="rounded-full border-primary/40 bg-card/50">
+            <a href={exportHref('attending')} download>
+              <Download className="mr-2 h-4 w-4" /> Export attending only
             </a>
           </Button>
           <Button asChild variant="outline" className="rounded-full border-border/60 bg-card/50">
@@ -110,15 +126,24 @@ export function CampDetailContent({
       </div>
 
       {/* Analytics */}
-      <div className="mt-8 grid grid-cols-2 gap-3 sm:gap-5 lg:grid-cols-4">
-        <StatCard icon={Users} label="Registrations" value={activeTotal} sublabel={`${analytics.filledCount} / ${analytics.capacity} spots filled`} accent="orange" />
+      <div className="mt-8 flex flex-wrap items-center gap-3">
+        <div className="inline-flex rounded-full border border-border/60 bg-card/50 p-1 text-sm font-medium">
+          <Link href={scopeHref('all')} scroll={false} className={cn('rounded-full px-4 py-1.5 transition-colors', !attendingOnly ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:text-foreground')}>All registrations</Link>
+          <Link href={scopeHref('attending')} scroll={false} className={cn('rounded-full px-4 py-1.5 transition-colors', attendingOnly ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:text-foreground')}>Attending only</Link>
+        </div>
+        <p className="text-xs text-muted-foreground">
+          {attendingOnly ? 'Analytics for confirmed + payment submitted — the people who will actually go.' : 'Analytics for every registration except refunded.'}
+        </p>
+      </div>
+      <div className="mt-4 grid grid-cols-2 gap-3 sm:gap-5 lg:grid-cols-4">
+        <StatCard icon={Users} label={attendingOnly ? 'Attending' : 'Registrations'} value={activeTotal} sublabel={`${analytics.filledCount} / ${analytics.capacity} spots filled`} accent="orange" />
         <StatCard icon={DollarSign} label="Confirmed revenue" value={`EGP ${analytics.confirmedRevenueEgp.toLocaleString()}`} sublabel="verified payments" accent="teal" />
         <StatCard icon={ClipboardCheck} label="Needs review" value={analytics.statusCounts.payment_submitted ?? 0} sublabel="payment submitted" accent="gold" />
         <StatCard icon={Clock3} label="Waitlist" value={analytics.waitlistSize} sublabel="waiting for a spot" accent="gold" />
       </div>
       <div className="mt-3 grid grid-cols-2 gap-3 sm:mt-5 sm:gap-5 lg:grid-cols-4">
         <StatCard icon={TrendingUp} label="Pending confirmation" value={`EGP ${analytics.pendingConfirmationRevenueEgp.toLocaleString()}`} sublabel="not counted as revenue yet" accent="orange" />
-        <StatCard icon={Baby} label="First-time campers" value={insights.firstTimers} sublabel={`of ${insights.total} active`} accent="teal" />
+        <StatCard icon={Baby} label="First-time campers" value={insights.firstTimers} sublabel={`of ${insights.total} ${attendingOnly ? 'attending' : 'active'}`} accent="teal" />
         <StatCard icon={ShieldAlert} label="Medical notes" value={insights.withMedical} sublabel="campers with conditions" accent="orange" />
         <StatCard icon={FileWarning} label="Missing documents" value={insights.missingDocuments} sublabel="paid but no files" accent="gold" />
       </div>
@@ -126,7 +151,7 @@ export function CampDetailContent({
       <div className="mt-8 grid gap-5 lg:grid-cols-2">
         <div className="rounded-2xl border border-border/60 bg-card/50 p-5 sm:p-6">
           <h2 className="mb-2 font-display text-lg font-bold text-foreground">Status breakdown</h2>
-          <CampStatusPieChart statusCounts={analytics.statusCounts} />
+          <CampStatusPieChart statusCounts={shownCounts} />
         </div>
         <div className="rounded-2xl border border-border/60 bg-card/50 p-5 sm:p-6">
           <h2 className="mb-2 font-display text-lg font-bold text-foreground">Capacity fill</h2>
@@ -150,7 +175,7 @@ export function CampDetailContent({
 
         <div className="-mx-1 mt-4 flex gap-2 overflow-x-auto px-1 pb-1">
           {(['all', ...STATUS_ORDER] as const).map((s) => {
-            const n = s === 'all' ? Object.values(analytics.statusCounts).reduce((a, b) => a + (b ?? 0), 0) : analytics.statusCounts[s] ?? 0;
+            const n = s === 'all' ? Object.values(counts).reduce((a, b) => a + (b ?? 0), 0) : s === 'attending' ? attendingTotal : counts[s] ?? 0;
             const active = statusFilter === s;
             return (
               <button
@@ -161,7 +186,7 @@ export function CampDetailContent({
                   active ? 'border-primary bg-primary text-primary-foreground' : 'border-border/60 bg-card/50 text-muted-foreground hover:text-foreground'
                 )}
               >
-                {s === 'all' ? 'All' : STATUS_LABELS[s]} <span className={cn('ml-1 text-xs', active ? 'opacity-90' : 'opacity-70')}>{n}</span>
+                {s === 'all' ? 'All' : s === 'attending' ? 'Attending' : STATUS_LABELS[s]} <span className={cn('ml-1 text-xs', active ? 'opacity-90' : 'opacity-70')}>{n}</span>
               </button>
             );
           })}
